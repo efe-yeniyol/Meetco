@@ -126,7 +126,7 @@ enum LatencyProfile: String, CaseIterable, Identifiable, Codable, Sendable {
 
     var detail: String {
         switch self {
-        case .fast: "Sends speech as soon as the speaker pauses. Best for interviews. Recommended."
+        case .fast: "Sends speech as soon as the speaker pauses. Best for live conversations. Recommended."
         case .balanced: "Waits for slightly longer pauses. Fewer API requests."
         case .economical: "Sends longer passages. Fewer requests, higher latency."
         }

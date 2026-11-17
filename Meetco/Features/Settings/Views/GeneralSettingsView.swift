@@ -21,7 +21,7 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle("Keep Meetco above other windows", isOn: $settings.alwaysOnTop)
                 Toggle("Show on all Spaces and over full-screen meetings", isOn: $settings.showOnAllSpaces)
-                Toggle("Try to hide Meetco from screen sharing", isOn: $settings.hideFromScreenSharing)
+                Toggle("Keep Meetco out of my screen shares when presenting", isOn: $settings.hideFromScreenSharing)
                 HStack {
                     Button("Show Panel") { appState.isPanelVisible = true; appState.isControlBarVisible = true }
                     Button("Reset Window Positions") { resetWindowPositions() }
@@ -29,7 +29,7 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("Floating windows")
             } footer: {
-                Text("Hiding from screen sharing is best effort: some apps and recent macOS versions still capture all windows. Check before presenting.")
+                Text("Off by default. Keeps the panel from cluttering slides you share. This is best effort: some apps and recent macOS versions still capture all windows, so check before presenting.")
                     .foregroundStyle(.secondary)
             }
 

@@ -33,9 +33,9 @@ final class PartialJSONTests: XCTestCase {
         XCTAssertEqual(value.serialized(), #"{"b":1,"a":{"x":"q\"uote"},"c":[true,null]}"#)
     }
 
-    func testInterviewQuestions() {
+    func testOpenEndedRequests() {
         let detector = QuestionDetector()
-        XCTAssertTrue(detector.isQuestion("Tell me about a time you handled a difficult stakeholder"))
+        XCTAssertTrue(detector.isQuestion("Tell me about how you handled the migration last quarter"))
         XCTAssertTrue(detector.isQuestion("I'd like to hear about your experience with Swift"))
         XCTAssertTrue(detector.isQuestion("Kendinizden biraz bahseder misiniz"))
     }

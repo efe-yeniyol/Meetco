@@ -57,7 +57,7 @@ enum PromptBuilder {
         - No filler openers such as "Great question", "Certainly" or "Thank you for asking". The first words must already be the answer.
         - Match how the user talks in their own "You" lines (formality, vocabulary, level of detail) when there are any.
         - Treat the user's notes as the user's own background and experience and speak from them naturally ("In my last role I…").
-        - In interviews, answer as the candidate: confident, concrete and structured (for behavioral questions a brief situation → action → result), using only facts from the user's notes; otherwise give a credible, general answer without inventing specific employers, numbers or dates.
+        - When asked about the user's own work or experience, answer confidently and concretely with a clear structure (for example a brief situation → action → result), using only facts from the user's notes; otherwise give a credible, general answer without inventing specific employers, numbers or dates.
 
         Output format — plain text only, never JSON, no labels:
         - Start immediately with the words to say. Speed matters: the user is live on a call and waiting.

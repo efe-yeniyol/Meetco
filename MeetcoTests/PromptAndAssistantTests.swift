@@ -101,13 +101,13 @@ final class PromptAndAssistantTests: XCTestCase {
     }
 
     func testAssistantStreamsPartials() async throws {
-        let json = #"{"question_detected": true, "question": "Why us?", "suggested_answer": "Because your mission matches my experience.", "explanation": "Çünkü...", "language": "English", "directed_at_user": true, "needs_more_info": false, "confidence": 0.8, "meeting_topic": "Interview"}"#
+        let json = #"{"question_detected": true, "question": "When can we launch?", "suggested_answer": "We can launch at the end of the month once testing is done.", "explanation": "Test bitince ay sonunda...", "language": "English", "directed_at_user": true, "needs_more_info": false, "confidence": 0.8, "meeting_topic": "Launch planning"}"#
         let client = FakeOpenAIClient(responses: [.success(json)])
         let collector = PartialCollector()
         let output = try await OpenAIMeetingAssistant(client: client).generate(request()) { partial in
             collector.partials.append(partial)
         }
-        XCTAssertEqual(output.text, "Because your mission matches my experience.")
+        XCTAssertEqual(output.text, "We can launch at the end of the month once testing is done.")
         let answers = await MainActor.run { collector.partials.map(\.answer) }
         XCTAssertGreaterThan(answers.count, 3, "Answer should arrive progressively")
         XCTAssertTrue(answers.contains { !$0.isEmpty && $0 != output.text }, "Should see an incomplete answer while streaming")

@@ -84,7 +84,7 @@ final class SettingsStore {
         defaultPanelSize = Self.load(defaults, SettingsKeys.defaultPanelSize, .expanded)
         alwaysOnTop = defaults.object(forKey: SettingsKeys.alwaysOnTop) as? Bool ?? true
         showOnAllSpaces = defaults.object(forKey: SettingsKeys.showOnAllSpaces) as? Bool ?? true
-        hideFromScreenSharing = defaults.object(forKey: SettingsKeys.hideFromScreenSharing) as? Bool ?? true
+        hideFromScreenSharing = defaults.object(forKey: SettingsKeys.hideFromScreenSharing) as? Bool ?? false
         globalShortcutsEnabled = defaults.object(forKey: SettingsKeys.globalShortcutsEnabled) as? Bool ?? true
         autoScrollTranscript = defaults.object(forKey: SettingsKeys.autoScrollTranscript) as? Bool ?? true
         clearTranscriptOnNewSession = defaults.object(forKey: SettingsKeys.clearTranscriptOnNewSession) as? Bool ?? true

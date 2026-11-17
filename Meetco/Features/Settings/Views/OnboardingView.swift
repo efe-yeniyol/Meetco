@@ -58,7 +58,7 @@ private struct OnboardingContent: View {
                 }
 
                 step(number: 3, title: "Privacy") {
-                    Text("Audio is processed in memory and sent to OpenAI for transcription using your key — Meetco does not process everything locally. Nothing is recorded to disk, and transcripts are only saved if you turn that on in Settings → Privacy.")
+                    Text("Audio is processed in memory and sent to OpenAI for transcription using your key — Meetco does not process everything locally. Nothing is recorded to disk, and transcripts are only saved if you turn that on in Settings → Privacy. Let the people in your meetings know you use Meetco, and get their consent where the law or your organization requires it.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
