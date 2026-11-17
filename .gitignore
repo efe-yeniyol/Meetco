@@ -1,0 +1,39 @@
+# Build output
+build/
+DerivedData/
+*.xcarchive
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Secrets — never commit API keys, tokens or signing material.
+# The OpenAI key lives only in the macOS Keychain; Meetco never reads it from files.
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+secrets*
+credentials*
+
+# Local tooling and editor state
+.claude/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local code-signing choice
+.signing-identity
