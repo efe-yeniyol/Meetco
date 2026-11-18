@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Meetco.Core/Meetco.Core.csproj" />
+    <Project Path="src/Meetco.App/Meetco.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Meetco.Core.Tests/Meetco.Core.Tests.csproj" />
+  </Folder>
+</Solution>
