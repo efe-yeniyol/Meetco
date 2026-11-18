@@ -14,6 +14,8 @@ public partial class SettingsWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         Activated += (_, _) => _viewModel.RefreshSessionCount();
+        // LostFocus/Delay bindings would drop the last edit when the window is closed directly.
+        Closing += (_, _) => BindingFlush.UpdateSources(this);
     }
 
     private void OnSaveKey(object sender, RoutedEventArgs e)

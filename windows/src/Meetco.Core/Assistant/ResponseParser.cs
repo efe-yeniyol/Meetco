@@ -98,9 +98,35 @@ public static class ResponseParser
     {
         try
         {
-            return JsonNode.Parse(text) as JsonObject;
+            if (JsonNode.Parse(text) is not JsonObject json) return null;
+            _ = json.Count; // Materializes the properties; throws on duplicate keys.
+            return json;
         }
         catch (JsonException)
+        {
+            return null;
+        }
+        catch (ArgumentException)
+        {
+            return DecodeKeepingLastDuplicate(text);
+        }
+    }
+
+    /// <summary>Models occasionally repeat a key; keep the last value, like JSONSerialization does.</summary>
+    private static JsonObject? DecodeKeepingLastDuplicate(string text)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return null;
+            var json = new JsonObject();
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                json[property.Name] = JsonNode.Parse(property.Value.GetRawText());
+            }
+            return json;
+        }
+        catch (Exception error) when (error is JsonException or ArgumentException)
         {
             return null;
         }

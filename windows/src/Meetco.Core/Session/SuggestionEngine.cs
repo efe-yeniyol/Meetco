@@ -48,7 +48,7 @@ public sealed class SuggestionEngine : ObservableObject
     private readonly List<string> _recentAutomaticQuestions = [];
     private AutomaticTrigger? _lastAutomatic;
     private Guid? _draftRequestId;
-    private readonly List<SuggestionKind> _activeKinds = [];
+    private readonly List<(SuggestionKind Kind, Guid RequestId)> _activeRequests = [];
 
     private Guid? _selectedSuggestionId;
     private Suggestion? _draft;
@@ -112,8 +112,8 @@ public sealed class SuggestionEngine : ObservableObject
     public bool HasPendingScreenContext => PendingScreenContext is not null;
     public bool IsCapturingScreen { get => _isCapturingScreen; private set => SetProperty(ref _isCapturingScreen, value); }
 
-    public bool IsGenerating => _activeKinds.Count > 0;
-    public bool IsGeneratingKind(SuggestionKind kind) => _activeKinds.Contains(kind);
+    public bool IsGenerating => _activeRequests.Count > 0;
+    public bool IsGeneratingKind(SuggestionKind kind) => _activeRequests.Any(r => r.Kind == kind);
     public bool IsGeneratingRecap => IsGeneratingKind(SuggestionKind.Recap);
     public bool IsGeneratingWhatToSay => IsGeneratingKind(SuggestionKind.WhatToSay);
     public bool IsGeneratingQuestions => IsGeneratingKind(SuggestionKind.QuestionsToAsk);
@@ -315,7 +315,7 @@ public sealed class SuggestionEngine : ObservableObject
         _automatic?.Cancel();
         foreach (var source in _manual.Values) source.Cancel();
         _manual.Clear();
-        _activeKinds.Clear();
+        _activeRequests.Clear();
         _pendingQuestion = null;
         _pendingSince = null;
         _recentAutomaticQuestions.Clear();
@@ -365,11 +365,11 @@ public sealed class SuggestionEngine : ObservableObject
             ScreenContext = PendingScreenContext,
             PreviousAnswers = PreviousAnswers(replacing),
         };
-        _activeKinds.Add(kind);
+        var requestId = Guid.NewGuid();
+        _activeRequests.Add((kind, requestId));
         NotifyGenerating();
         Log.Info("assistant", $"Requesting {kind} (automatic: {automatic})");
 
-        var requestId = Guid.NewGuid();
         var draftId = replacing?.Id ?? Guid.NewGuid();
         if (kind.IsSpoken())
         {
@@ -437,7 +437,8 @@ public sealed class SuggestionEngine : ObservableObject
 
     private void Finish(SuggestionKind kind, Guid requestId)
     {
-        _activeKinds.Remove(kind);
+        // By id: a cancelled request finishing late must not clear a newer request's spinner.
+        _activeRequests.RemoveAll(r => r.RequestId == requestId);
         NotifyGenerating();
         if (_draftRequestId == requestId)
         {

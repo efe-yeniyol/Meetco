@@ -34,6 +34,9 @@ public sealed class OpenAIClient : IOpenAIClient, IDisposable
     private readonly RetryPolicy _retryPolicy;
     private readonly HttpClient _http;
 
+    /// <summary>Longest silence tolerated in the middle of a streamed response.</summary>
+    public TimeSpan StreamIdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
     public OpenAIClient(ApiKeyProvider keyProvider, Func<OpenAIConfiguration> configuration, RetryPolicy? retryPolicy = null, HttpMessageHandler? handler = null)
     {
         _keyProvider = keyProvider;
@@ -64,12 +67,20 @@ public sealed class OpenAIClient : IOpenAIClient, IDisposable
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream, Encoding.UTF8);
+        // A dropped connection can leave the stream silent forever: fail if no data arrives for a while.
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var idleTimeout = StreamIdleTimeout;
         while (true)
         {
             string? line;
             try
             {
-                line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                idle.CancelAfter(idleTimeout);
+                line = await reader.ReadLineAsync(idle.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw OpenAIException.Network("The response stopped arriving (timed out).");
             }
             catch (IOException error) when (!cancellationToken.IsCancellationRequested)
             {

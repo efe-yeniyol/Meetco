@@ -177,6 +177,42 @@ public class TranscriptionCoordinatorTests
     });
 }
 
+public class TranscriptionIdleTests
+{
+    private sealed class GatedTranscriber : ITranscriptionService
+    {
+        public List<TaskCompletionSource<TranscriptionResult>> Pending { get; } = [];
+
+        public Task<TranscriptionResult> TranscribeAsync(AudioChunk chunk, TranscriptionOptions options, CancellationToken cancellationToken)
+        {
+            var completion = new TaskCompletionSource<TranscriptionResult>();
+            Pending.Add(completion);
+            return completion.Task;
+        }
+    }
+
+    [Fact]
+    public void WaitUntilIdleIsNotFooledByAnEarlierTimeout() => SingleThread.Run(async () =>
+    {
+        var transcriber = new GatedTranscriber();
+        var coordinator = new TranscriptionCoordinator(transcriber, new TranscriptStore(), new AppSettings());
+        AudioChunk Chunk() => new() { Source = AudioSourceKind.System, Samples = new float[16], SampleRate = 16_000, StartedAt = DateTimeOffset.Now, EndedAt = DateTimeOffset.Now, Sequence = 1 };
+
+        coordinator.Process(Chunk());
+        await coordinator.WaitUntilIdleAsync(TimeSpan.FromMilliseconds(20));   // times out
+        transcriber.Pending[0].SetResult(new TranscriptionResult("One.", "en"));
+        await Task.Delay(20);
+        Assert.False(coordinator.IsTranscribing);
+
+        coordinator.Process(Chunk());
+        var wait = coordinator.WaitUntilIdleAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(50);
+        Assert.False(wait.IsCompleted, "Must wait for the new transcription, not reuse the old signal");
+        transcriber.Pending[1].SetResult(new TranscriptionResult("Two.", "en"));
+        await wait;
+    });
+}
+
 public class RealtimeWireTests
 {
     [Fact]

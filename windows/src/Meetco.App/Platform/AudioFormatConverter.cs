@@ -15,8 +15,10 @@ public sealed class AudioFormatConverter
 {
     public const int TargetSampleRate = 16_000;
 
-    /// <summary>Half the filter length in input samples (32 taps in total).</summary>
-    private const int HalfTaps = 16;
+    /// <summary>Zero crossings on each side of the filter, measured in output samples.</summary>
+    private const int ZeroCrossings = 16;
+    /// <summary>Kernel table resolution: entries per input sample of distance.</summary>
+    private const int TableResolution = 512;
 
     private readonly SampleEncoding _encoding;
     private readonly int _channels;
@@ -24,6 +26,14 @@ public sealed class AudioFormatConverter
     private readonly bool _passThrough;
     private readonly double _step;
     private readonly double _cutoff;
+    /// <summary>
+    /// Half the filter length in input samples. It scales with the decimation ratio so the
+    /// transition band stays narrow at the output rate (48 at 48 kHz, 96 taps in total);
+    /// a fixed short filter would dull sibilants and let 8–11 kHz alias into the speech band.
+    /// </summary>
+    private readonly int _halfTaps;
+    /// <summary>Precomputed kernel, sampled every 1/<see cref="TableResolution"/> input samples from 0 to <see cref="_halfTaps"/>.</summary>
+    private readonly float[] _table;
 
     private readonly List<float> _history = [];
     /// <summary>Position of the next output sample, in input samples relative to the start of <see cref="_history"/>.</summary>
@@ -45,6 +55,12 @@ public sealed class AudioFormatConverter
         _step = (double)sampleRate / TargetSampleRate;
         // Cycles per input sample: half the output rate, with a little margin for the filter's roll-off.
         _cutoff = 0.5 * Math.Min(1.0, (double)TargetSampleRate / sampleRate) * 0.92;
+        _halfTaps = (int)Math.Ceiling(ZeroCrossings * Math.Max(1.0, _step));
+        _table = new float[_halfTaps * TableResolution + 2];
+        for (var index = 0; index < _table.Length; index++)
+        {
+            _table[index] = (float)ExactKernel((double)index / TableResolution);
+        }
     }
 
     public float[] Convert(byte[] buffer, int count)
@@ -109,9 +125,9 @@ public sealed class AudioFormatConverter
         while (true)
         {
             var center = (int)Math.Floor(_position);
-            if (center + HalfTaps >= _history.Count) break;
+            if (center + _halfTaps >= _history.Count) break;
             double sum = 0;
-            for (var k = center - HalfTaps + 1; k <= center + HalfTaps; k++)
+            for (var k = center - _halfTaps + 1; k <= center + _halfTaps; k++)
             {
                 if (k < 0) continue;
                 sum += _history[k] * Kernel(_position - k);
@@ -121,7 +137,7 @@ public sealed class AudioFormatConverter
         }
 
         // Drop history that no future output sample can reach.
-        var drop = (int)Math.Floor(_position) - HalfTaps;
+        var drop = (int)Math.Floor(_position) - _halfTaps;
         if (drop > 0)
         {
             drop = Math.Min(drop, _history.Count);
@@ -131,10 +147,20 @@ public sealed class AudioFormatConverter
         return output.ToArray();
     }
 
-    /// <summary>Blackman-windowed sinc low-pass, normalized for unity gain at DC.</summary>
+    /// <summary>Table lookup with linear interpolation (the kernel is symmetric).</summary>
     private double Kernel(double distance)
     {
-        var u = distance / HalfTaps;
+        var scaled = Math.Abs(distance) * TableResolution;
+        var index = (int)scaled;
+        if (index >= _table.Length - 1) return 0;
+        var fraction = scaled - index;
+        return _table[index] + (_table[index + 1] - _table[index]) * fraction;
+    }
+
+    /// <summary>Blackman-windowed sinc low-pass, normalized for unity gain at DC.</summary>
+    private double ExactKernel(double distance)
+    {
+        var u = distance / _halfTaps;
         if (Math.Abs(u) >= 1) return 0;
         var window = 0.42 + 0.5 * Math.Cos(Math.PI * u) + 0.08 * Math.Cos(2 * Math.PI * u);
         var x = 2 * Math.PI * _cutoff * distance;

@@ -118,22 +118,43 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
     public void Start()
     {
         if (State != SessionState.Idle) return;
-        _ = StartSessionAsync(_settings.CaptureMode, isRestart: false);
+        Run(() => StartSessionAsync(_settings.CaptureMode, isRestart: false));
     }
 
     public void Stop()
     {
         if (State is not (SessionState.Listening or SessionState.Starting)) return;
-        _ = StopSessionAsync(archive: true);
+        Run(() => StopSessionAsync(archive: true));
     }
 
     /// <summary>Changes the capture mode; restarts capture if a session is running.</summary>
-    public async void SetCaptureMode(AudioCaptureMode mode)
+    public void SetCaptureMode(AudioCaptureMode mode)
     {
         _settings.CaptureMode = mode;
         if (State != SessionState.Listening) return;
-        await StopSessionAsync(archive: false);
-        await StartSessionAsync(mode, isRestart: true);
+        Run(async () =>
+        {
+            await StopSessionAsync(archive: false);
+            await StartSessionAsync(mode, isRestart: true);
+        });
+    }
+
+    /// <summary>Runs a lifecycle step; an unexpected failure becomes an error message instead of a stuck state.</summary>
+    private async void Run(Func<Task> step)
+    {
+        try
+        {
+            await step();
+        }
+        catch (Exception error)
+        {
+            Log.Error("audio", "Session step failed: " + error);
+            StopCaptures();
+            _processors.Clear();
+            OnPropertyChanged(nameof(ActiveSources));
+            ErrorMessage = error.Message;
+            State = SessionState.Idle;
+        }
     }
 
     public void DismissMessages()
@@ -145,6 +166,11 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
     /// <summary>Synchronous best-effort teardown used at app exit.</summary>
     public void Dispose()
     {
+        // Quitting while listening still keeps the transcript when the user asked for history.
+        if (State == SessionState.Listening && StartedAt is { } started && _settings.SaveTranscriptsLocally && _archive is not null)
+        {
+            SaveArchive(started);
+        }
         _idleFlush?.Cancel();
         _liveTranscription?.CloseAll();
         StopCaptures();
@@ -233,17 +259,19 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ActiveSources));
 
         var sessionStart = StartedAt;
-        State = SessionState.Idle;
         if (archive)
         {
-            StartedAt = null;
-            ActiveMode = null;
+            // Stay in Stopping until the archive is written, so a new session (which may clear the
+            // transcript) can't start in between and replace the meeting that just ended.
             if (_settings.SaveTranscriptsLocally && _archive is not null && sessionStart is { } started)
             {
                 await _transcription.WaitUntilIdleAsync(TimeSpan.FromSeconds(15));
                 SaveArchive(started);
             }
+            StartedAt = null;
+            ActiveMode = null;
         }
+        State = SessionState.Idle;
         Log.Info("audio", "Listening stopped");
     }
 
@@ -328,10 +356,8 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
                 var output = processor.Ingest(samples, now);
                 foreach (var chunk in output.Chunks)
                 {
-                    _dispatcher.Post(() =>
-                    {
-                        if (generation == _captureGeneration) _transcription.Process(chunk);
-                    });
+                    // Always transcribed, even if Stop ran meanwhile: it is the end of what was said.
+                    _dispatcher.Post(() => _transcription.Process(chunk));
                 }
                 var ticks = Environment.TickCount64;
                 bool shouldUpdate;
@@ -406,10 +432,15 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
         }
         _systemRestartAttempts += 1;
         WarningMessage = "System audio was interrupted — reconnecting…";
+        var generation = _captureGeneration;
         await Task.Delay(TimeSpan.FromSeconds(1));
-        if (State != SessionState.Listening) return;
+        // The session may have been stopped, restarted or switched to mic-only meanwhile.
+        if (State != SessionState.Listening || generation != _captureGeneration || ActiveMode?.IncludesSystemAudio() != true) return;
         var problems = new List<string>();
         TryAttach(_captureFactory.CreateSystemCapture, _settings.LatencyProfile.ChunkerConfiguration(), problems);
+        // A successful reconnect earns back the retries: switching headphones several times
+        // in one meeting must not end system audio for the rest of it.
+        if (problems.Count == 0) _systemRestartAttempts = 0;
         WarningMessage = problems.Count == 0 ? null : string.Join("\n", problems);
         OnPropertyChanged(nameof(ActiveSources));
     }

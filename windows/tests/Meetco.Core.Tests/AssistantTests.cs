@@ -88,6 +88,20 @@ public class ResponseParserTests
     }
 
     [Fact]
+    public void DecoratedNoneMeansNoQuestion()
+    {
+        Assert.False(ResponseParser.Parse("**NONE**", SuggestionKind.Answer).QuestionDetected);
+        Assert.False(ResponseParser.Parse("(NONE)", SuggestionKind.Answer).QuestionDetected);
+    }
+
+    [Fact]
+    public void DuplicateJsonKeysKeepTheLastValue()
+    {
+        var output = ResponseParser.Parse("""{"summary": "first", "summary": "second", "key_points": []}""", SuggestionKind.Recap);
+        Assert.Equal("second", output.Text);
+    }
+
+    [Fact]
     public void PartialAnswerWaitsForPossibleNone()
     {
         Assert.Equal("", PlainAnswer.Partial("NO").Answer);

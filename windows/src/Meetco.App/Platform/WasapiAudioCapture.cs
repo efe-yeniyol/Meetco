@@ -233,7 +233,16 @@ public sealed class WasapiAudioCapture : IAudioCapture, IMMNotificationClient
             Log.Error("audio", "Audio conversion failed: " + error.Message);
             return;
         }
-        if (samples.Length > 0) _onSamples?.Invoke(samples);
+        if (samples.Length == 0) return;
+        try
+        {
+            _onSamples?.Invoke(samples);
+        }
+        catch (Exception error)
+        {
+            // Never let a processing bug look like a device failure (NAudio would stop recording).
+            Log.Error("audio", "Processing captured audio failed: " + error.Message);
+        }
     }
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)
@@ -288,7 +297,9 @@ public sealed class WasapiAudioCapture : IAudioCapture, IMMNotificationClient
             }
             Log.Notice("audio", "Selected microphone not available; using the default microphone");
         }
-        foreach (var role in new[] { Role.Communications, Role.Console })
+        // Console first: opening the Communications device can make Windows duck other audio
+        // ("reduce other sounds by 80%"), which would turn the meeting down.
+        foreach (var role in new[] { Role.Console, Role.Communications })
         {
             try
             {

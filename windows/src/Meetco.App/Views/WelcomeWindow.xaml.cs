@@ -13,6 +13,7 @@ public partial class WelcomeWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         InitializeComponent();
+        Closing += (_, _) => BindingFlush.UpdateSources(this);
     }
 
     private void OnSaveKey(object sender, RoutedEventArgs e)

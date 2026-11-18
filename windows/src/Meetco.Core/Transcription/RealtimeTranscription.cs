@@ -280,6 +280,8 @@ public sealed class RealtimeTranscriptionSession : ILiveAudioSink
         var socket = new ClientWebSocket();
         socket.Options.SetRequestHeader("Authorization", "Bearer " + key);
         socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+        // Ping/pong: a half-open connection is noticed even while nobody is speaking.
+        socket.Options.KeepAliveTimeout = TimeSpan.FromSeconds(10);
         int connection;
         lock (_gate)
         {

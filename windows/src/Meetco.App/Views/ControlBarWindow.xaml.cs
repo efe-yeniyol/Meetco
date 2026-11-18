@@ -13,6 +13,9 @@ public partial class ControlBarWindow : Window
 {
     private readonly ShellViewModel _viewModel;
 
+    /// <summary>Set by the app when it quits, so the window may really close.</summary>
+    public bool AllowClose { get; set; }
+
     public ControlBarWindow(ShellViewModel viewModel)
     {
         _viewModel = viewModel;
@@ -22,6 +25,13 @@ public partial class ControlBarWindow : Window
         {
             WindowHelper.MakeFloating(this);
             WindowHelper.SetHiddenFromCapture(this, viewModel.Settings.HideFromScreenSharing);
+        };
+        // Alt+F4 hides instead of closing: a closed WPF window can never be shown again.
+        Closing += (_, e) =>
+        {
+            if (AllowClose) return;
+            e.Cancel = true;
+            _viewModel.IsControlBarVisible = false;
         };
     }
 

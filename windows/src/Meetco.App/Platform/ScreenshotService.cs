@@ -15,16 +15,31 @@ public sealed class ScreenshotService : IScreenContextCapture
 {
     private const int MaxWidth = 1600;
 
+    /// <summary>
+    /// Captures and encodes on a short-lived STA thread (WPF imaging is happiest there), so a
+    /// large screen never freezes the UI while the JPEG is encoded.
+    /// </summary>
     public Task<ScreenContext> CaptureMainDisplayAsync()
     {
-        try
+        var completion = new TaskCompletionSource<ScreenContext>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
         {
-            return Task.FromResult(Capture());
-        }
-        catch (Exception error)
+            try
+            {
+                completion.SetResult(Capture());
+            }
+            catch (Exception error)
+            {
+                completion.SetException(new InvalidOperationException("The screenshot could not be taken: " + error.Message, error));
+            }
+        })
         {
-            return Task.FromException<ScreenContext>(new InvalidOperationException("The screenshot could not be taken: " + error.Message, error));
-        }
+            IsBackground = true,
+            Name = "Meetco screenshot",
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return completion.Task;
     }
 
     private static ScreenContext Capture()
@@ -34,24 +49,32 @@ public sealed class ScreenshotService : IScreenContextCapture
         if (width <= 0 || height <= 0) throw new InvalidOperationException("No display found.");
 
         var screenDc = NativeMethods.GetDC(IntPtr.Zero);
-        var memoryDc = NativeMethods.CreateCompatibleDC(screenDc);
-        var bitmap = NativeMethods.CreateCompatibleBitmap(screenDc, width, height);
-        var previous = NativeMethods.SelectObject(memoryDc, bitmap);
+        var memoryDc = IntPtr.Zero;
+        var bitmap = IntPtr.Zero;
+        var previous = IntPtr.Zero;
         BitmapSource source;
         try
         {
+            if (screenDc == IntPtr.Zero) throw new InvalidOperationException("The screen could not be read.");
+            memoryDc = NativeMethods.CreateCompatibleDC(screenDc);
+            bitmap = NativeMethods.CreateCompatibleBitmap(screenDc, width, height);
+            if (memoryDc == IntPtr.Zero || bitmap == IntPtr.Zero) throw new InvalidOperationException("Out of graphics memory.");
+            previous = NativeMethods.SelectObject(memoryDc, bitmap);
             if (!NativeMethods.BitBlt(memoryDc, 0, 0, width, height, screenDc, 0, 0, NativeMethods.SRCCOPY | NativeMethods.CAPTUREBLT))
             {
                 throw new InvalidOperationException("Screen copy failed.");
             }
+            // The bitmap must be deselected before WPF (and DeleteObject) can use it.
             NativeMethods.SelectObject(memoryDc, previous);
+            previous = IntPtr.Zero;
             source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
         }
         finally
         {
-            NativeMethods.DeleteObject(bitmap);
-            NativeMethods.DeleteDC(memoryDc);
-            NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
+            if (previous != IntPtr.Zero) NativeMethods.SelectObject(memoryDc, previous);
+            if (bitmap != IntPtr.Zero) NativeMethods.DeleteObject(bitmap);
+            if (memoryDc != IntPtr.Zero) NativeMethods.DeleteDC(memoryDc);
+            if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
 
         BitmapSource scaled = source;

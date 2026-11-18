@@ -86,8 +86,15 @@ public static class PlainAnswer
         return (Clean(content.Trim().TrimEnd('=')), null);
     }
 
-    public static bool IsNoQuestion(string answer) =>
-        answer.Trim().Trim(PunctuationAndWhitespace).ToUpperInvariant() == NoQuestionMarker;
+    public static bool IsNoQuestion(string answer)
+    {
+        static bool Strip(char c) => char.IsWhiteSpace(c) || char.IsPunctuation(c) || char.IsSymbol(c);
+        var start = 0;
+        var end = answer.Length;
+        while (start < end && Strip(answer[start])) start++;
+        while (end > start && Strip(answer[end - 1])) end--;
+        return answer[start..end].ToUpperInvariant() == NoQuestionMarker;
+    }
 
     /// <summary>State of an answer that is still being written.</summary>
     public static AssistantPartial Partial(string content)
@@ -99,8 +106,6 @@ public static class PlainAnswer
         if (NoQuestionMarker.StartsWith(answer.ToUpperInvariant(), StringComparison.Ordinal)) return new AssistantPartial();
         return new AssistantPartial(QuestionDetected: true, Answer: answer, Explanation: explanation);
     }
-
-    private static readonly char[] PunctuationAndWhitespace = [' ', '\n', '\r', '\t', '.', ',', '!', '?', ';', ':', '"', '\'', '“', '”', '-', '…'];
 
     private static string Clean(string text)
     {

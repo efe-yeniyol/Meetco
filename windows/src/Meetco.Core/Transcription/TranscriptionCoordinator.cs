@@ -77,7 +77,11 @@ public sealed class TranscriptionCoordinator : ObservableObject
         finally
         {
             InFlightCount -= 1;
-            if (InFlightCount == 0) _idle?.TrySetResult();
+            if (InFlightCount == 0)
+            {
+                _idle?.TrySetResult();
+                _idle = null;
+            }
         }
     }
 
@@ -88,7 +92,6 @@ public sealed class TranscriptionCoordinator : ObservableObject
         _idle ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var idle = _idle.Task;
         await Task.WhenAny(idle, Task.Delay(timeout));
-        if (idle.IsCompleted) _idle = null;
     }
 
     private void Accept(TranscriptionResult result, AudioChunk chunk)

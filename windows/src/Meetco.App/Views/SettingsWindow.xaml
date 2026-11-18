@@ -54,7 +54,7 @@
                     <TextBlock Text="{Binding TranscriptionModelNotes}" Style="{StaticResource Hint}" />
 
                     <TextBlock Text="About you" Style="{StaticResource Label}" />
-                    <TextBox Text="{Binding Settings.UserContext, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                    <TextBox Text="{Binding Settings.UserContext, UpdateSourceTrigger=PropertyChanged, Delay=500}" AcceptsReturn="True"
                              TextWrapping="Wrap" MinHeight="90" MaxHeight="200" VerticalScrollBarVisibility="Auto" Padding="4" />
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Your role, company, product facts and experience. Meetco speaks from these as if they were your own memories, and never invents personal facts." />

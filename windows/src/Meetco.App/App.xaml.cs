@@ -39,6 +39,7 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private WelcomeWindow? _welcomeWindow;
     private bool _isQuitting;
+    private bool _started;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -75,14 +76,28 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             Log.Error("app", "Fatal: " + (args.ExceptionObject as Exception)?.ToString());
 
-        BuildServices(appData);
-        BuildWindows();
+        try
+        {
+            BuildServices(appData);
+            BuildWindows();
 
-        _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
-        _showWait = ThreadPool.RegisterWaitForSingleObject(_showSignal,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() => _shell?.ShowEverything())),
-            null, Timeout.Infinite, false);
+            _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
+            _showWait = ThreadPool.RegisterWaitForSingleObject(_showSignal,
+                (_, _) => Dispatcher.BeginInvoke(new Action(() => _shell?.ShowEverything())),
+                null, Timeout.Infinite, false);
+        }
+        catch (Exception error)
+        {
+            // Without this, a failed start would leave an invisible process holding the
+            // single-instance lock, and every later launch would silently exit.
+            Log.Error("app", "Startup failed: " + error);
+            MessageBox.Show("Meetco could not start:\n\n" + error.Message + "\n\nDetails are in " +
+                Path.Combine(localData, "logs", "meetco.log"), "Meetco", MessageBoxButton.OK, MessageBoxImage.Error);
+            Quit();
+            return;
+        }
 
+        _started = true;
         Log.Info("app", "Meetco launched");
     }
 
@@ -236,7 +251,17 @@ public partial class App : Application
     {
         if (_isQuitting) return;
         _isQuitting = true;
+        if (_controlBar is not null) _controlBar.AllowClose = true;
+        if (_panel is not null) _panel.AllowClose = true;
         Shutdown();
+    }
+
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        // Windows is signing out or shutting down: let every window close.
+        if (_controlBar is not null) _controlBar.AllowClose = true;
+        if (_panel is not null) _panel.AllowClose = true;
+        base.OnSessionEnding(e);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -334,6 +359,7 @@ public partial class App : Application
     {
         Log.Error("app", "Unhandled UI exception: " + e.Exception);
         e.Handled = true;
+        if (!_started) Quit();
     }
 
     private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using MeetcoApp.Platform;
 using MeetcoApp.ViewModels;
@@ -15,6 +16,9 @@ public partial class MainPanelWindow : Window
     public static readonly Size CompactSize = new(440, 220);
 
     private readonly ShellViewModel _viewModel;
+
+    /// <summary>Set by the app when it quits, so the window may really close.</summary>
+    public bool AllowClose { get; set; }
     private Size _expandedSize = DefaultExpandedSize;
 
     public MainPanelWindow(ShellViewModel viewModel)
@@ -27,6 +31,14 @@ public partial class MainPanelWindow : Window
             WindowHelper.MakeFloating(this);
             WindowHelper.SetHiddenFromCapture(this, viewModel.Settings.HideFromScreenSharing);
         };
+        // Alt+F4 hides instead of closing: a closed WPF window can never be shown again.
+        Closing += (_, e) =>
+        {
+            if (AllowClose) return;
+            e.Cancel = true;
+            _viewModel.IsPanelVisible = false;
+        };
+        PreviewMouseWheel += OnPreviewMouseWheel;
         viewModel.PropertyChanged += OnViewModelChanged;
         ((INotifyCollectionChanged)viewModel.Transcript.Segments).CollectionChanged += OnTranscriptChanged;
     }
@@ -69,6 +81,32 @@ public partial class MainPanelWindow : Window
     private void OnTranscriptChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_viewModel.Settings.AutoScrollTranscript && e.Action == NotifyCollectionChangedAction.Add) ScrollTranscriptToEnd();
+    }
+
+    /// <summary>
+    /// Read-only TextBoxes (selectable answer and transcript text) swallow the mouse wheel in their
+    /// own template ScrollViewer. Scroll the panel's ScrollViewer around them instead.
+    /// </summary>
+    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        var textBox = FindAncestor<System.Windows.Controls.TextBox>(e.OriginalSource as DependencyObject);
+        if (textBox is null) return;
+        var outer = FindAncestor<System.Windows.Controls.ScrollViewer>(VisualTreeHelper.GetParent(textBox));
+        if (outer is null) return;
+        outer.ScrollToVerticalOffset(outer.VerticalOffset - e.Delta / 3.0);
+        e.Handled = true;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
+    {
+        while (node is not null)
+        {
+            if (node is T match) return match;
+            node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(node)
+                : LogicalTreeHelper.GetParent(node);
+        }
+        return null;
     }
 
     private void ScrollTranscriptToEnd()
