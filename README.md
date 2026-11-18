@@ -100,13 +100,13 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 You can change the models in **Settings → OpenAI** and type any model ID your account can use.
 
-On macOS, answers can also come from **Claude (Anthropic)**, **DeepSeek**, a **local model** via
-Ollama or LM Studio, or any OpenAI-compatible server (OpenRouter, Groq, Mistral, vLLM…). Pick one in
+Answers can also come from **Claude (Anthropic)**, **DeepSeek**, a **local model** via Ollama or
+LM Studio, or any OpenAI-compatible server (OpenRouter, Groq, Mistral, vLLM…). Pick one in
 **Settings → Assistant**.
 
-On macOS 26 and later, transcription can run **on your Mac** with Apple's speech model (Settings →
-Audio): free, private, no OpenAI key needed. Pair it with Ollama or LM Studio and nothing leaves
-your computer.
+Transcription can run **on your computer** (Settings → Audio): free, private, no OpenAI key needed.
+macOS 26 and later uses Apple's speech model; Windows uses Whisper (a one-time model download).
+Pair it with Ollama or LM Studio and nothing leaves your computer.
 
 | Role | Default | Alternatives |
 |---|---|---|

@@ -16,7 +16,30 @@ public partial class SettingsWindow : Window
         Activated += (_, _) => _viewModel.RefreshSessionCount();
         // LostFocus/Delay bindings would drop the last edit when the window is closed directly.
         Closing += (_, _) => BindingFlush.UpdateSources(this);
+        Closed += (_, _) => _viewModel.Detach();
     }
+
+    private void OnSaveProviderKey(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SaveProviderKey(ProviderKeyBox.Password)) ProviderKeyBox.Clear();
+    }
+
+    private async void OnTestProvider(object sender, RoutedEventArgs e)
+    {
+        await _viewModel.TestProviderAsync(ProviderKeyBox.Password);
+    }
+
+    private void OnDeleteProviderKey(object sender, RoutedEventArgs e)
+    {
+        var name = Meetco.Core.Models.AssistantProviderInfo.ShortName(_viewModel.Settings.AssistantProvider);
+        var answer = MessageBox.Show(this, $"Delete the saved {name} API key from this PC?", "Meetco",
+            MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.OK) _viewModel.DeleteProviderKey();
+    }
+
+    private async void OnDownloadWhisper(object sender, RoutedEventArgs e) => await _viewModel.DownloadWhisperModelAsync();
+
+    private void OnCancelDownload(object sender, RoutedEventArgs e) => _viewModel.CancelDownload();
 
     private void OnSaveKey(object sender, RoutedEventArgs e)
     {

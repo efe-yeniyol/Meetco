@@ -35,16 +35,20 @@ public sealed class OpenAIException : Exception
         _ => false,
     };
 
-    public override string Message => Kind switch
+    public override string Message => Describe("OpenAI", "OpenAI");
+
+    /// <summary>User-facing message naming the service that failed (every OpenAI-compatible provider raises these).</summary>
+    public string Describe(string service, string settingsTab) => Kind switch
     {
-        OpenAIErrorKind.MissingApiKey => "No OpenAI API key is configured. Add your key in Settings → OpenAI.",
-        OpenAIErrorKind.Http when Status == 401 => "OpenAI rejected the API key (401). Check the key in Settings → OpenAI.",
-        OpenAIErrorKind.Http when Code == "insufficient_quota" => "Your OpenAI account has no available credit. Configure billing at platform.openai.com.",
-        OpenAIErrorKind.Http when Status == 429 => $"OpenAI rate limit reached. Meetco will retry automatically. ({Detail})",
-        OpenAIErrorKind.Http when Status == 404 => $"OpenAI could not find the requested model or endpoint (404). {Detail}",
-        OpenAIErrorKind.Http => $"OpenAI error {Status}: {Detail}",
-        OpenAIErrorKind.Network => $"Network error: {Detail}",
-        OpenAIErrorKind.Decoding => $"Unexpected response from OpenAI: {Detail}",
-        _ => "OpenAI returned an empty response.",
+        OpenAIErrorKind.MissingApiKey => $"No {service} API key is configured. Add your key in Settings → {settingsTab}.",
+        OpenAIErrorKind.Http when Status == 401 => $"{service} rejected the API key (401). Check the key in Settings → {settingsTab}.",
+        OpenAIErrorKind.Http when Code == "insufficient_quota" => $"Your {service} account has no available credit. Check billing in its dashboard.",
+        OpenAIErrorKind.Http when Status == 402 => $"Your {service} account has no available credit (402). {Detail}",
+        OpenAIErrorKind.Http when Status == 429 => $"{service} rate limit reached. Meetco will retry automatically. ({Detail})",
+        OpenAIErrorKind.Http when Status == 404 => $"{service} could not find the requested model or endpoint (404). {Detail}",
+        OpenAIErrorKind.Http => $"{service} error {Status}: {Detail}",
+        OpenAIErrorKind.Network => $"Network error reaching {service}: {Detail}",
+        OpenAIErrorKind.Decoding => $"Unexpected response from {service}: {Detail}",
+        _ => $"{service} returned an empty response.",
     };
 }

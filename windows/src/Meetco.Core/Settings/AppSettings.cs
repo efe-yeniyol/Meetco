@@ -31,11 +31,18 @@ public sealed class AppSettings : ObservableObject
     private string _userContext = "";
     private bool _autoSuggest = true;
 
+    // Assistant provider
+    private AssistantProvider _assistantProvider = AssistantProvider.OpenAI;
+    private Dictionary<string, string> _providerModels = [];
+    private Dictionary<string, string> _providerBaseUrls = [];
+
     // Audio & transcription
     private TranscriptionLanguage _transcriptionLanguage = TranscriptionLanguage.Auto;
     private LatencyProfile _latencyProfile = LatencyProfile.Fast;
     private AudioCaptureMode _captureMode = AudioCaptureMode.SystemAndMicrophone;
     private string? _microphoneDeviceId;
+    private TranscriptionProvider _transcriptionProvider = TranscriptionProvider.OpenAI;
+    private WhisperModelSize _whisperModel = WhisperModelSize.Small;
 
     // General
     private PanelSize _defaultPanelSize = PanelSize.Expanded;
@@ -58,10 +65,29 @@ public sealed class AppSettings : ObservableObject
     public string UserContext { get => _userContext; set => Set(ref _userContext, value); }
     public bool AutoSuggest { get => _autoSuggest; set => Set(ref _autoSuggest, value); }
 
+    public AssistantProvider AssistantProvider
+    {
+        get => _assistantProvider;
+        set
+        {
+            Set(ref _assistantProvider, value);
+            OnPropertyChanged(nameof(AssistantModel));
+            OnPropertyChanged(nameof(AssistantBaseUrl));
+        }
+    }
+
+    /// <summary>Model per non-OpenAI provider, keyed by provider name. Replaced (never mutated) so background reads are safe.</summary>
+    public Dictionary<string, string> ProviderModels { get => _providerModels; set => Set(ref _providerModels, value ?? []); }
+
+    /// <summary>Base URL per non-OpenAI provider, keyed by provider name.</summary>
+    public Dictionary<string, string> ProviderBaseUrls { get => _providerBaseUrls; set => Set(ref _providerBaseUrls, value ?? []); }
+
     public TranscriptionLanguage TranscriptionLanguage { get => _transcriptionLanguage; set => Set(ref _transcriptionLanguage, value); }
     public LatencyProfile LatencyProfile { get => _latencyProfile; set => Set(ref _latencyProfile, value); }
     public AudioCaptureMode CaptureMode { get => _captureMode; set => Set(ref _captureMode, value); }
     public string? MicrophoneDeviceId { get => _microphoneDeviceId; set => Set(ref _microphoneDeviceId, value); }
+    public TranscriptionProvider TranscriptionProvider { get => _transcriptionProvider; set => Set(ref _transcriptionProvider, value); }
+    public WhisperModelSize WhisperModel { get => _whisperModel; set => Set(ref _whisperModel, value); }
 
     public PanelSize DefaultPanelSize { get => _defaultPanelSize; set => Set(ref _defaultPanelSize, value); }
     public bool AlwaysOnTop { get => _alwaysOnTop; set => Set(ref _alwaysOnTop, value); }
@@ -79,6 +105,39 @@ public sealed class AppSettings : ObservableObject
     /// <summary>Thread-safe snapshot of the network configuration.</summary>
     [JsonIgnore]
     public OpenAIConfiguration NetworkConfiguration => OpenAIConfiguration.From(ApiBaseUrl);
+
+    /// <summary>Model used by a provider. OpenAI keeps its original setting.</summary>
+    public string ModelFor(AssistantProvider provider) =>
+        provider == AssistantProvider.OpenAI ? ChatModel : ProviderModels.GetValueOrDefault(provider.ToString()) ?? provider.DefaultModel();
+
+    public void SetModel(AssistantProvider provider, string model)
+    {
+        if (provider == AssistantProvider.OpenAI) ChatModel = model;
+        else ProviderModels = new Dictionary<string, string>(ProviderModels) { [provider.ToString()] = model };
+        if (provider == AssistantProvider) OnPropertyChanged(nameof(AssistantModel));
+    }
+
+    /// <summary>Base URL text of a provider. OpenAI's is shared with transcription.</summary>
+    public string BaseUrlFor(AssistantProvider provider) =>
+        provider == AssistantProvider.OpenAI ? ApiBaseUrl : ProviderBaseUrls.GetValueOrDefault(provider.ToString()) ?? provider.DefaultBaseUrl().AbsoluteUri;
+
+    public void SetBaseUrl(AssistantProvider provider, string url)
+    {
+        if (provider == AssistantProvider.OpenAI) ApiBaseUrl = url;
+        else ProviderBaseUrls = new Dictionary<string, string>(ProviderBaseUrls) { [provider.ToString()] = url };
+        if (provider == AssistantProvider) OnPropertyChanged(nameof(AssistantBaseUrl));
+    }
+
+    /// <summary>The active assistant model.</summary>
+    [JsonIgnore]
+    public string AssistantModel { get => ModelFor(AssistantProvider); set => SetModel(AssistantProvider, value); }
+
+    [JsonIgnore]
+    public string AssistantBaseUrl { get => BaseUrlFor(AssistantProvider); set => SetBaseUrl(AssistantProvider, value); }
+
+    /// <summary>Thread-safe network configuration of an assistant provider.</summary>
+    public OpenAIConfiguration ConfigurationFor(AssistantProvider provider) =>
+        provider == AssistantProvider.OpenAI ? NetworkConfiguration : OpenAIConfiguration.For(provider, BaseUrlFor(provider));
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

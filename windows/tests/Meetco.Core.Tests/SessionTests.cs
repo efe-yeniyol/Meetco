@@ -20,7 +20,7 @@ public class SuggestionEngineTests
 
         public Harness(string? key = "sk-test")
         {
-            Engine = new SuggestionEngine(Assistant, null, Store, Settings, new ApiKeyProvider(new MemoryKeyStore(key)));
+            Engine = new SuggestionEngine(Assistant, null, Store, Settings, new ApiKeyRegistry(new ApiKeyProvider(new MemoryKeyStore(key)), _ => new MemoryKeyStore()));
         }
 
         public TranscriptSegment Segment(string text, AudioSourceKind source = AudioSourceKind.System, bool isQuestion = true)

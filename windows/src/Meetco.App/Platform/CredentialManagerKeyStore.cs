@@ -1,16 +1,19 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using Meetco.Core.Models;
 using Meetco.Core.Settings;
 
 namespace MeetcoApp.Platform;
 
 /// <summary>
-/// Stores the OpenAI API key in Windows Credential Manager (a generic credential for the
-/// current user). Meetco never reads keys from environment variables or files.
+/// Stores an API key in Windows Credential Manager (a generic credential for the current user).
+/// Each assistant provider has its own credential; OpenAI keeps "Meetco/OpenAI-API-Key".
+/// Meetco never reads keys from environment variables or files.
 /// </summary>
-public sealed class CredentialManagerKeyStore : IApiKeyStore
+public sealed class CredentialManagerKeyStore(AssistantProvider provider = AssistantProvider.OpenAI) : IApiKeyStore
 {
-    private const string Target = "Meetco/OpenAI-API-Key";
+    private readonly string Target = provider.CredentialTarget();
+    private readonly string UserName = provider.ShortName() + " API key";
 
     public string? Load()
     {
@@ -35,7 +38,7 @@ public sealed class CredentialManagerKeyStore : IApiKeyStore
     public void Save(string key)
     {
         var target = Marshal.StringToCoTaskMemUni(Target);
-        var user = Marshal.StringToCoTaskMemUni("OpenAI API key");
+        var user = Marshal.StringToCoTaskMemUni(UserName);
         var blob = Marshal.StringToCoTaskMemUni(key);
         try
         {

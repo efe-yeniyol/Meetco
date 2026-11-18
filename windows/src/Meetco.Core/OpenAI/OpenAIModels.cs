@@ -76,6 +76,8 @@ public sealed record ChatCompletionRequest
     public int? MaxCompletionTokens { get; init; }
     public string? ReasoningEffort { get; init; }
     public bool Stream { get; init; }
+    /// <summary>Older name of max_completion_tokens, still the one most OpenAI-compatible servers know.</summary>
+    public int? MaxTokens { get; init; }
 
     /// <summary>JSON body; System.Text.Json.Nodes keeps the schema's declared key order.</summary>
     public string ToJsonString()
@@ -87,7 +89,8 @@ public sealed record ChatCompletionRequest
         };
         if (ResponseFormat is not null) json["response_format"] = ResponseFormat.ToJson();
         if (Temperature is { } temperature) json["temperature"] = temperature;
-        if (MaxCompletionTokens is { } maxTokens) json["max_completion_tokens"] = maxTokens;
+        if (MaxCompletionTokens is { } maxCompletionTokens) json["max_completion_tokens"] = maxCompletionTokens;
+        if (MaxTokens is { } maxTokens) json["max_tokens"] = maxTokens;
         if (ReasoningEffort is not null) json["reasoning_effort"] = ReasoningEffort;
         if (Stream) json["stream"] = true;
         return json.ToJsonString(Json.Options);
@@ -149,6 +152,7 @@ internal sealed class OpenAIErrorEnvelope
 }
 
 /// <summary>Options for a single transcription request.</summary>
-public sealed record TranscriptionOptions(string Model, string? LanguageCode = null, string? Prompt = null);
+public sealed record TranscriptionOptions(string Model, string? LanguageCode = null, string? Prompt = null,
+    Models.TranscriptionProvider Provider = Models.TranscriptionProvider.OpenAI);
 
 public sealed record TranscriptionResult(string Text, string? LanguageCode);

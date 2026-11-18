@@ -72,12 +72,13 @@ public class MeetingSessionTests
         public SuggestionEngine Suggestions { get; }
         public MeetingSessionController Session { get; }
 
-        public Harness(string? key = "sk-test")
+        public Harness(string? key = "sk-test", Func<CancellationToken, Task>? prepareOnDevice = null, bool onDevice = false)
         {
+            if (onDevice) Settings.TranscriptionProvider = TranscriptionProvider.OnDevice;
             var keys = new ApiKeyProvider(new MemoryKeyStore(key));
             var transcription = new TranscriptionCoordinator(Transcriber, Store, Settings);
-            Suggestions = new SuggestionEngine(Assistant, null, Store, Settings, keys);
-            Session = new MeetingSessionController(Settings, Factory, keys, transcription, Store, Suggestions);
+            Suggestions = new SuggestionEngine(Assistant, null, Store, Settings, new ApiKeyRegistry(keys, _ => new MemoryKeyStore()));
+            Session = new MeetingSessionController(Settings, Factory, keys, transcription, Store, Suggestions, prepareOnDevice: prepareOnDevice);
         }
     }
 
@@ -89,6 +90,29 @@ public class MeetingSessionTests
         await Task.Yield();
         Assert.Equal(SessionState.Idle, harness.Session.State);
         Assert.Contains("API key", harness.Session.ErrorMessage);
+        Assert.Empty(harness.Factory.Created);
+    });
+
+    [Fact]
+    public void OnDeviceTranscriptionNeedsNoOpenAIKey() => SingleThread.Run(async () =>
+    {
+        var prepared = 0;
+        var harness = new Harness(key: null, prepareOnDevice: _ => { prepared++; return Task.CompletedTask; }, onDevice: true);
+        harness.Session.Start();
+        await Task.Delay(20);
+        Assert.Equal(SessionState.Listening, harness.Session.State);
+        Assert.Equal(1, prepared);
+        Assert.Null(harness.Session.ErrorMessage);
+    });
+
+    [Fact]
+    public void MissingOnDeviceModelStopsTheStart() => SingleThread.Run(async () =>
+    {
+        var harness = new Harness(key: null, prepareOnDevice: _ => throw new OnDeviceTranscriptionException("The Balanced speech model is not downloaded yet."), onDevice: true);
+        harness.Session.Start();
+        await Task.Delay(20);
+        Assert.Equal(SessionState.Idle, harness.Session.State);
+        Assert.Contains("not downloaded", harness.Session.ErrorMessage);
         Assert.Empty(harness.Factory.Created);
     });
 
