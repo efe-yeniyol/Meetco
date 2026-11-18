@@ -40,7 +40,8 @@ final class WindowCoordinator {
         buildMainPanel()
         observeContinuously { [weak self] in self?.applyState() }
 
-        if !environment.keyProvider.hasKey || !environment.settings.hasCompletedOnboarding {
+        let canTranscribe = environment.settings.transcriptionProvider == .onDevice || environment.keyProvider.hasKey
+        if !canTranscribe || !environment.settings.hasCompletedOnboarding {
             showOnboarding()
         }
     }
@@ -183,7 +184,9 @@ final class WindowCoordinator {
                 .environment(\.settingsDependencies, SettingsDependencies(
                     keyProvider: environment.keyProvider,
                     client: environment.openAI,
-                    archive: environment.archive
+                    archive: environment.archive,
+                    keys: environment.keys,
+                    modelListers: environment.modelListers
                 )))
             let window = NSWindow(contentViewController: controller)
             window.title = "Meetco Settings"
@@ -206,7 +209,9 @@ final class WindowCoordinator {
                 .environment(\.settingsDependencies, SettingsDependencies(
                     keyProvider: environment.keyProvider,
                     client: environment.openAI,
-                    archive: environment.archive
+                    archive: environment.archive,
+                    keys: environment.keys,
+                    modelListers: environment.modelListers
                 )))
             let window = NSWindow(contentViewController: controller)
             window.title = "Welcome to Meetco"

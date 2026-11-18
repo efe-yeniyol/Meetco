@@ -56,3 +56,26 @@ final class APIKeyProvider: @unchecked Sendable {
         return "\(key.prefix(3))…\(key.suffix(4))"
     }
 }
+
+/// One `APIKeyProvider` per assistant provider, each backed by its own Keychain item.
+/// OpenAI's provider is the same instance transcription uses.
+final class APIKeyRegistry: Sendable {
+    private let providers: [AssistantProvider: APIKeyProvider]
+
+    init(openAI: APIKeyProvider, store: (AssistantProvider) -> APIKeyStoring) {
+        var providers: [AssistantProvider: APIKeyProvider] = [.openAI: openAI]
+        for provider in AssistantProvider.allCases where provider != .openAI {
+            providers[provider] = APIKeyProvider(store: store(provider))
+        }
+        self.providers = providers
+    }
+
+    func keyProvider(for provider: AssistantProvider) -> APIKeyProvider {
+        providers[provider]!
+    }
+
+    /// Whether `provider` can be called: it has a key, or needs none.
+    func isReady(_ provider: AssistantProvider) -> Bool {
+        !provider.requiresAPIKey || keyProvider(for: provider).hasKey
+    }
+}

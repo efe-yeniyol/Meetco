@@ -37,6 +37,7 @@ final class MeetingSessionController {
     @ObservationIgnored private let archive: SessionArchive
     @ObservationIgnored private let warmUp: @Sendable () async -> Void
     @ObservationIgnored private let liveTranscription: LiveTranscriptionHub?
+    @ObservationIgnored private let onDeviceTranscription: OnDeviceTranscriptionService?
 
     @ObservationIgnored private let systemCapture = SystemAudioCaptureService()
     @ObservationIgnored private let microphoneCapture = MicrophoneCaptureService()
@@ -54,10 +55,12 @@ final class MeetingSessionController {
         suggestions: SuggestionEngine,
         archive: SessionArchive,
         liveTranscription: LiveTranscriptionHub? = nil,
+        onDeviceTranscription: OnDeviceTranscriptionService? = nil,
         warmUp: @escaping @Sendable () async -> Void = {}
     ) {
         self.warmUp = warmUp
         self.liveTranscription = liveTranscription
+        self.onDeviceTranscription = onDeviceTranscription
         self.settings = settings
         self.permissions = permissions
         self.keyProvider = keyProvider
@@ -125,9 +128,28 @@ final class MeetingSessionController {
     private func startSession(mode: AudioCaptureMode, isRestart: Bool) async {
         errorMessage = nil
         warningMessage = nil
-        guard keyProvider.hasKey else {
-            errorMessage = "Add your OpenAI API key in Settings before you start listening."
-            return
+        switch settings.transcriptionProvider {
+        case .openAI:
+            guard keyProvider.hasKey else {
+                errorMessage = "Add your OpenAI API key in Settings, or choose on-device transcription in Settings → Audio, before you start listening."
+                return
+            }
+        case .onDevice:
+            guard TranscriptionProvider.isOnDeviceAvailable else {
+                errorMessage = OnDeviceTranscriptionError.unavailable.localizedDescription
+                return
+            }
+            // Downloads the speech model the first time a language is used (shared with other apps).
+            if let onDeviceTranscription {
+                let language = settings.transcriptionLanguage.isoCode
+                Task { [weak self] in
+                    do {
+                        try await onDeviceTranscription.prepare(languageCode: language)
+                    } catch {
+                        self?.errorMessage = error.localizedDescription
+                    }
+                }
+            }
         }
         state = .starting
         // Open the HTTPS connection now so the first transcription/answer doesn't pay for the TLS handshake.
@@ -237,7 +259,7 @@ final class MeetingSessionController {
         consumerTasks[source]?.cancel()
         // With a live model the audio is streamed while it is spoken; chunks only mark utterance ends.
         var liveSink: (any LiveAudioSink)?
-        if ModelCatalog.isLiveTranscriptionModel(settings.transcriptionModel) {
+        if settings.transcriptionProvider == .openAI && ModelCatalog.isLiveTranscriptionModel(settings.transcriptionModel) {
             liveSink = liveTranscription?.open(
                 source: source,
                 model: settings.transcriptionModel,

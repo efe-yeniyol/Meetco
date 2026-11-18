@@ -98,11 +98,14 @@ struct ChatCompletionRequest: Encodable, Sendable {
     var maxCompletionTokens: Int?
     var reasoningEffort: String?
     var stream: Bool?
+    /// Older name of `max_completion_tokens`, still the one most OpenAI-compatible servers know.
+    var maxTokens: Int?
 
     enum CodingKeys: String, CodingKey {
         case model, messages, temperature, stream
         case responseFormat = "response_format"
         case maxCompletionTokens = "max_completion_tokens"
+        case maxTokens = "max_tokens"
         case reasoningEffort = "reasoning_effort"
     }
 }

@@ -13,6 +13,13 @@ struct SettingsView: View {
             }
             .tabItem { Label("OpenAI", systemImage: "key") }
 
+            Group {
+                if let dependencies {
+                    AssistantSettingsView(dependencies: dependencies)
+                }
+            }
+            .tabItem { Label("Assistant", systemImage: "sparkles") }
+
             GeneralSettingsView()
                 .tabItem { Label("General", systemImage: "gearshape") }
 

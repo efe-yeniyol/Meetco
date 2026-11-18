@@ -22,11 +22,12 @@ struct OnboardingView: View {
 }
 
 private struct OnboardingContent: View {
+    @Environment(SettingsStore.self) private var settings
     @State private var keyModel: APIKeyViewModel
     let onFinish: () -> Void
 
     init(dependencies: SettingsDependencies, onFinish: @escaping () -> Void) {
-        _keyModel = State(initialValue: APIKeyViewModel(keyProvider: dependencies.keyProvider, client: dependencies.client))
+        _keyModel = State(initialValue: dependencies.keyModel(for: .openAI))
         self.onFinish = onFinish
     }
 
@@ -48,8 +49,22 @@ private struct OnboardingContent: View {
                         .padding(.top, 4)
                 }
 
-                step(number: 1, title: "Add your OpenAI API key") {
-                    BYOKExplanation()
+                step(number: 1, title: TranscriptionProvider.isOnDeviceAvailable ? "Set up transcription" : "Add your OpenAI API key") {
+                    if TranscriptionProvider.isOnDeviceAvailable {
+                        @Bindable var settings = settings
+                        Picker("Transcribe with", selection: $settings.transcriptionProvider) {
+                            ForEach(TranscriptionProvider.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.radioGroup)
+                    }
+                    if settings.transcriptionProvider == .onDevice {
+                        Text("Speech is transcribed on this Mac. Add an OpenAI key for answers, or skip it and pick Claude, DeepSeek or a local model later in Settings → Assistant.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        BYOKExplanation()
+                    }
                     APIKeyEditor(model: keyModel)
                 }
 
@@ -58,21 +73,21 @@ private struct OnboardingContent: View {
                 }
 
                 step(number: 3, title: "Privacy") {
-                    Text("Audio is processed in memory and sent to OpenAI for transcription using your key — Meetco does not process everything locally. Nothing is recorded to disk, and transcripts are only saved if you turn that on in Settings → Privacy. Let the people in your meetings know you use Meetco, and get their consent where the law or your organization requires it.")
+                    Text("\(settings.transcriptionProvider == .onDevice ? "Audio is transcribed on this Mac and never leaves it. Transcript excerpts are sent to the assistant provider you choose to write answers." : "Audio is processed in memory and sent to OpenAI for transcription using your key.") Nothing is recorded to disk, and transcripts are only saved if you turn that on in Settings → Privacy. Let the people in your meetings know you use Meetco, and get their consent where the law or your organization requires it.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 HStack {
-                    Text(keyModel.hasStoredKey ? "You're ready. Press ⌃⌥L to start listening." : "Save an API key to continue.")
+                    Text(isReady ? "You're ready. Press ⌃⌥L to start listening." : "Save an API key to continue.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Start Using Meetco", action: onFinish)
                         .controlSize(.large)
                         .keyboardShortcut(.defaultAction)
-                        .disabled(!keyModel.hasStoredKey)
+                        .disabled(!isReady)
                 }
             }
             .padding(.horizontal, 36)
@@ -80,6 +95,8 @@ private struct OnboardingContent: View {
             .padding(.bottom, 28)
         }
     }
+
+    private var isReady: Bool { keyModel.hasStoredKey || settings.transcriptionProvider == .onDevice }
 
     private func step<Content: View>(number: Int, title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {

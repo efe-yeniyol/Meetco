@@ -1,7 +1,7 @@
 import Foundation
 
 /// Abstraction over the OpenAI REST API so services can be tested with fakes.
-protocol OpenAIClientProtocol: Sendable {
+protocol OpenAIClientProtocol: ModelListing {
     func createChatCompletion(_ request: ChatCompletionRequest) async throws -> ChatCompletionResponse
     /// Streams content deltas of a chat completion (server-sent events).
     func streamChatCompletion(_ request: ChatCompletionRequest) -> AsyncThrowingStream<String, Error>
@@ -25,18 +25,22 @@ final class OpenAIClient: OpenAIClientProtocol {
     private let session: URLSession
     private let configuration: @Sendable () -> OpenAIConfiguration
     private let retryPolicy: RetryPolicy
+    private let requiresAPIKey: Bool
 
+    /// - Parameter requiresAPIKey: false for local servers (Ollama, LM Studio) that accept requests without a key.
     init(
         keyProvider: APIKeyProvider,
         configuration: @escaping @Sendable () -> OpenAIConfiguration = { OpenAIConfiguration.current() },
+        requiresAPIKey: Bool = true,
         retryPolicy: RetryPolicy = RetryPolicy()
     ) {
         self.keyProvider = keyProvider
         self.configuration = configuration
+        self.requiresAPIKey = requiresAPIKey
         self.retryPolicy = retryPolicy
         let sessionConfiguration = URLSessionConfiguration.ephemeral
-        sessionConfiguration.timeoutIntervalForRequest = 60
-        sessionConfiguration.timeoutIntervalForResource = 120
+        sessionConfiguration.timeoutIntervalForRequest = 120
+        sessionConfiguration.timeoutIntervalForResource = 300
         sessionConfiguration.httpAdditionalHeaders = ["User-Agent": "Meetco/1.0 (macOS)"]
         sessionConfiguration.urlCache = nil
         self.session = URLSession(configuration: sessionConfiguration)
@@ -74,7 +78,7 @@ final class OpenAIClient: OpenAIClientProtocol {
 
     /// Opens a connection to the API host ahead of time so the first real request is faster.
     func warmUp() async {
-        guard keyProvider.hasKey else { return }
+        guard keyProvider.hasKey || !requiresAPIKey else { return }
         _ = try? await listModels(apiKeyOverride: nil)
     }
 
@@ -124,14 +128,13 @@ final class OpenAIClient: OpenAIClientProtocol {
         contentType: String?,
         apiKeyOverride: String?
     ) throws -> URLRequest {
-        guard let apiKey = apiKeyOverride ?? keyProvider.currentKey(), !apiKey.isEmpty else {
-            throw OpenAIError.missingAPIKey
-        }
+        let apiKey = (apiKeyOverride ?? keyProvider.currentKey())?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if apiKey.isEmpty && requiresAPIKey { throw OpenAIError.missingAPIKey }
         let config = configuration()
         var request = URLRequest(url: config.baseURL.appendingPathComponent(path))
         request.httpMethod = method
         request.timeoutInterval = config.requestTimeout
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if !apiKey.isEmpty { request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
         if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
         request.httpBody = body
         return request

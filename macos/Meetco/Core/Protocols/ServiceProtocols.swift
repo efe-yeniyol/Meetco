@@ -14,6 +14,7 @@ struct TranscriptionOptions: Sendable, Equatable {
     var languageCode: String?
     /// Preceding text that helps the model keep continuity.
     var prompt: String?
+    var provider: TranscriptionProvider = .openAI
 }
 
 struct TranscriptionResult: Sendable, Equatable {

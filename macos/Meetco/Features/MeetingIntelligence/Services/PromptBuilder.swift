@@ -4,8 +4,11 @@ import Foundation
 enum PromptBuilder {
     // MARK: Messages
 
-    static func messages(for request: AssistantRequest) -> [ChatMessage] {
-        let system = ChatMessage.system(systemPrompt(for: request))
+    /// - Parameter inlineSchema: describe the JSON schema in the prompt, for endpoints without strict structured output.
+    static func messages(for request: AssistantRequest, inlineSchema: Bool = false) -> [ChatMessage] {
+        var systemText = systemPrompt(for: request)
+        if inlineSchema, let schema = schemaInstructions(for: request.kind) { systemText += "\n" + schema }
+        let system = ChatMessage.system(systemText)
         let userText = userPrompt(for: request)
         if let screen = request.screenContext {
             return [system, .user(parts: [
@@ -154,6 +157,15 @@ enum PromptBuilder {
     }
 
     // MARK: Schemas
+
+    /// The schema spelled out in the prompt. Nil for spoken answers, which are plain text.
+    static func schemaInstructions(for kind: Suggestion.Kind) -> String? {
+        guard kind != .answer && kind != .whatToSay else { return nil }
+        return """
+        - Output only the JSON object: no markdown, no code fences, no text before or after it. Include every property, in this order, as described by this JSON Schema:
+        \(schema(for: kind).serialized())
+        """
+    }
 
     static func schemaName(for kind: Suggestion.Kind) -> String {
         switch kind {

@@ -7,13 +7,20 @@ struct SettingsDependencies: Sendable {
     let keyProvider: APIKeyProvider
     let client: any OpenAIClientProtocol
     let archive: SessionArchive
+    let keys: APIKeyRegistry
+    let modelListers: [AssistantProvider: any ModelListing]
+
+    @MainActor
+    func keyModel(for provider: AssistantProvider) -> APIKeyViewModel {
+        APIKeyViewModel(provider: provider, keyProvider: keys.keyProvider(for: provider), client: modelListers[provider] ?? client)
+    }
 }
 
 extension EnvironmentValues {
     @Entry var settingsDependencies: SettingsDependencies? = nil
 }
 
-/// Manages entering, saving, testing and deleting the user's OpenAI API key.
+/// Manages entering, saving, testing and deleting one provider's API key.
 @MainActor
 @Observable
 final class APIKeyViewModel {
@@ -21,7 +28,7 @@ final class APIKeyViewModel {
         case notConfigured
         case saved
         case testing
-        case connected(modelCount: Int)
+        case connected(service: String, modelCount: Int)
         case failed(String)
 
         var message: String {
@@ -29,7 +36,7 @@ final class APIKeyViewModel {
             case .notConfigured: "No API key saved."
             case .saved: "API key saved in your Keychain."
             case .testing: "Testing connection…"
-            case .connected(let count): "Connected to OpenAI — \(count) models available."
+            case .connected(let service, let count): "Connected to \(service) — \(count) models available."
             case .failed(let message): message
             }
         }
@@ -51,18 +58,25 @@ final class APIKeyViewModel {
     private(set) var hasStoredKey = false
     private(set) var availableModels: [String] = []
 
+    let provider: AssistantProvider
     @ObservationIgnored private let keyProvider: APIKeyProvider
-    @ObservationIgnored private let client: any OpenAIClientProtocol
+    @ObservationIgnored private let client: any ModelListing
 
-    init(keyProvider: APIKeyProvider, client: any OpenAIClientProtocol) {
+    init(provider: AssistantProvider = .openAI, keyProvider: APIKeyProvider, client: any ModelListing) {
+        self.provider = provider
         self.keyProvider = keyProvider
         self.client = client
         if let key = keyProvider.currentKey(), !key.isEmpty {
             keyInput = key
             hasStoredKey = true
             status = .saved
+        } else if !provider.requiresAPIKey {
+            status = .notConfigured
         }
     }
+
+    /// Ready to use: a key is saved, or the provider needs none.
+    var isReady: Bool { hasStoredKey || !provider.requiresAPIKey }
 
     var trimmedInput: String { keyInput.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -71,11 +85,14 @@ final class APIKeyViewModel {
         return APIKeyProvider.maskedPreview(of: key)
     }
 
-    var inputLooksValid: Bool { trimmedInput.count >= 20 && !trimmedInput.contains(" ") }
+    var inputLooksValid: Bool {
+        guard !trimmedInput.contains(" ") else { return false }
+        return provider.requiresAPIKey ? trimmedInput.count >= 20 : !trimmedInput.isEmpty
+    }
 
     func save() {
         guard inputLooksValid else {
-            status = .failed("That doesn't look like an OpenAI API key (they usually start with \"sk-\").")
+            status = .failed("That doesn't look like a\(provider == .anthropic ? "n" : "") \(provider.shortName) API key\(provider.requiresAPIKey ? " (they usually start with \"\(provider.keyPlaceholder.dropLast())\")" : "").")
             return
         }
         do {
@@ -91,15 +108,17 @@ final class APIKeyViewModel {
     /// Verifies the key currently in the field (saved or not) by listing models.
     func testConnection() async {
         let key = trimmedInput
-        guard !key.isEmpty else {
+        guard !key.isEmpty || !provider.requiresAPIKey else {
             status = .failed("Enter an API key first.")
             return
         }
         status = .testing
         do {
-            let models = try await client.listModels(apiKeyOverride: key)
+            let models = try await client.listModels(apiKeyOverride: key.isEmpty ? nil : key)
             availableModels = models
-            status = .connected(modelCount: models.count)
+            status = .connected(service: provider.shortName, modelCount: models.count)
+        } catch let error as OpenAIError where provider != .openAI {
+            status = .failed(ProviderError(provider: provider, underlying: error).localizedDescription)
         } catch {
             status = .failed(error.localizedDescription)
         }

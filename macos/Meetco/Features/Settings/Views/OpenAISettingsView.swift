@@ -1,11 +1,12 @@
 import SwiftUI
 
+/// OpenAI account used for transcription (and for answers when OpenAI is the assistant provider).
 struct OpenAISettingsView: View {
     @Environment(SettingsStore.self) private var settings
     @State private var keyModel: APIKeyViewModel
 
     init(dependencies: SettingsDependencies) {
-        _keyModel = State(initialValue: APIKeyViewModel(keyProvider: dependencies.keyProvider, client: dependencies.client))
+        _keyModel = State(initialValue: dependencies.keyModel(for: .openAI))
     }
 
     var body: some View {
@@ -16,33 +17,12 @@ struct OpenAISettingsView: View {
                 BYOKExplanation()
             }
 
-            Section("Models") {
-                ModelPicker(title: "Assistant model", selection: $settings.chatModel, presets: ModelCatalog.assistantModels, available: keyModel.availableModels)
-                ModelPicker(title: "Transcription model", selection: $settings.transcriptionModel, presets: ModelCatalog.transcriptionModels, available: [])
-            }
-
-            Section("Responses") {
-                Picker("Response language", selection: $settings.responseLanguage) {
-                    ForEach(ResponseLanguage.allCases) { Text($0.title).tag($0) }
-                }
-                Picker("Explanation language", selection: $settings.explanationLanguage) {
-                    ForEach(ExplanationLanguage.allCases) { Text($0.title).tag($0) }
-                }
-                Picker("Response style", selection: $settings.responseStyle) {
-                    ForEach(ResponseStyle.allCases) { Text($0.title).tag($0) }
-                }
-                Toggle("Suggest answers automatically when a question is detected", isOn: $settings.autoSuggest)
-            }
-
             Section {
-                TextEditor(text: $settings.userContext)
-                    .font(.body)
-                    .frame(minHeight: 70)
-                    .scrollContentBackground(.hidden)
+                ModelPicker(title: "Transcription model", selection: $settings.transcriptionModel, presets: ModelCatalog.transcriptionModels, available: [])
             } header: {
-                Text("About you (optional)")
+                Text("Transcription")
             } footer: {
-                Text("Your role, company, products and facts the assistant may use, e.g. \"I'm a solutions engineer at Acme. Our platform supports SSO and EU hosting.\" Meetco will not invent facts that are not here or in the conversation.")
+                Text("Used when Settings → Audio transcribes with OpenAI. Choose who writes the answers in the Assistant tab.")
                     .foregroundStyle(.secondary)
             }
 
@@ -66,7 +46,8 @@ struct OpenAISettingsView: View {
     }
 }
 
-/// Picker with presets plus a free-form model id.
+/// Picker with presets plus a free-form model id. Without presets (local servers), it offers
+/// the models the server reported instead.
 struct ModelPicker: View {
     let title: String
     @Binding var selection: String
@@ -78,6 +59,40 @@ struct ModelPicker: View {
     private var isPreset: Bool { presets.contains { $0.id == selection } }
 
     var body: some View {
+        if presets.isEmpty {
+            serverModels
+        } else {
+            presetPicker
+        }
+    }
+
+    private var serverModels: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                TextField(title, text: $selection, prompt: Text("Model id"))
+                    .font(.system(.body, design: .monospaced))
+                if !available.isEmpty {
+                    Menu("Choose") {
+                        ForEach(available, id: \.self) { model in
+                            Button(model) { selection = model }
+                        }
+                    }
+                    .fixedSize()
+                }
+            }
+            if available.isEmpty {
+                Text("Press Test Connection to load the models available on the server.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else if !selection.isEmpty && !available.contains(selection) {
+                Text("This model id was not found on the server.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var presetPicker: some View {
         VStack(alignment: .leading, spacing: 6) {
             Picker(title, selection: Binding(
                 get: { isPreset ? selection : "__custom" },
@@ -97,7 +112,7 @@ struct ModelPicker: View {
                 Text("Custom…").tag("__custom")
             }
             if !isPreset || selection.isEmpty {
-                TextField("Model id, e.g. gpt-4.1-mini", text: $selection)
+                TextField("Model id", text: $selection)
                     .font(.system(.body, design: .monospaced))
                 if !available.isEmpty && !available.contains(selection) {
                     Text("This model id was not found in your account's model list.")

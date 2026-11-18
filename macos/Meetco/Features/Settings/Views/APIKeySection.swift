@@ -10,9 +10,9 @@ struct APIKeyEditor: View {
             HStack(spacing: 6) {
                 Group {
                     if model.isRevealed {
-                        TextField("sk-…", text: $model.keyInput)
+                        TextField(model.provider.keyPlaceholder, text: $model.keyInput)
                     } else {
-                        SecureField("sk-…", text: $model.keyInput)
+                        SecureField(model.provider.keyPlaceholder, text: $model.keyInput)
                     }
                 }
                 .textFieldStyle(.roundedBorder)
@@ -32,7 +32,7 @@ struct APIKeyEditor: View {
                 Button("Save API Key") { model.save() }
                     .disabled(model.trimmedInput.isEmpty)
                 Button("Test Connection") { Task { await model.testConnection() } }
-                    .disabled(model.trimmedInput.isEmpty || model.status == .testing)
+                    .disabled((model.trimmedInput.isEmpty && model.provider.requiresAPIKey) || model.status == .testing)
                 Spacer()
                 if model.hasStoredKey {
                     Button("Delete Key", role: .destructive) { confirmDelete = true }
@@ -51,10 +51,12 @@ struct APIKeyEditor: View {
             .font(.callout)
             .foregroundStyle(.secondary)
         }
-        .confirmationDialog("Delete the saved OpenAI API key?", isPresented: $confirmDelete) {
+        .confirmationDialog("Delete the saved \(model.provider.shortName) API key?", isPresented: $confirmDelete) {
             Button("Delete Key", role: .destructive) { model.delete() }
         } message: {
-            Text("Meetco will stop transcribing and suggesting until you add a key again.")
+            Text(model.provider == .openAI
+                 ? "Meetco will stop transcribing until you add a key again."
+                 : "Meetco will stop suggesting with \(model.provider.shortName) until you add a key again.")
         }
     }
 }

@@ -46,6 +46,7 @@ final class PCMResampler: @unchecked Sendable {
 }
 
 /// Tracks whether the single input buffer was handed to the converter (called synchronously).
-private final class InputFeed: @unchecked Sendable {
+/// Tracks whether an AVAudioConverter input block already handed over its buffer.
+final class InputFeed: @unchecked Sendable {
     var consumed = false
 }
