@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-independent Meetco logic: voice activity detection, transcription, question
+       detection, prompts and the OpenAI client. No Windows APIs, so it builds and tests anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Meetco.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Meetco.Core.Tests" />
+  </ItemGroup>
+
+</Project>

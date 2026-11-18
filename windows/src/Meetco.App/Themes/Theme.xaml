@@ -1,0 +1,153 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:conv="clr-namespace:MeetcoApp.Converters">
+
+    <!-- Dark glass palette for the floating windows. -->
+    <SolidColorBrush x:Key="GlassBrush" Color="#E61C1C1E" />
+    <SolidColorBrush x:Key="GlassBorderBrush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceStrongBrush" Color="#24FFFFFF" />
+    <SolidColorBrush x:Key="TextBrush" Color="#FFF2F2F7" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#FF9A9AA2" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#FF0A84FF" />
+    <SolidColorBrush x:Key="ListeningBrush" Color="#FFFF453A" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#FFFFD60A" />
+    <SolidColorBrush x:Key="ErrorBannerBrush" Color="#40FF453A" />
+    <SolidColorBrush x:Key="WarningBannerBrush" Color="#33FFD60A" />
+    <SolidColorBrush x:Key="QuestionHighlightBrush" Color="#260A84FF" />
+    <SolidColorBrush x:Key="SystemLevelBrush" Color="#FF64D2FF" />
+    <SolidColorBrush x:Key="MicLevelBrush" Color="#FF30D158" />
+
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+
+    <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    <conv:HasContentToVisibilityConverter x:Key="HasContentToVisibility" />
+    <conv:TimeConverter x:Key="Time" />
+    <conv:UpperCaseConverter x:Key="UpperCase" />
+    <conv:LevelConverter x:Key="Level" />
+    <conv:InverseBooleanConverter x:Key="InvertBool" />
+
+    <!-- Rounded flat button used on the glass windows. -->
+    <Style x:Key="GlassButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceStrongBrush}" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Margin" Value="3,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.8" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.6" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource GlassButton}">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="QuietButton" TargetType="Button" BasedOn="{StaticResource GlassButton}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Padding" Value="6,3" />
+    </Style>
+
+    <!-- Toggle used for tabs and the mic mute switch. -->
+    <Style x:Key="GlassToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Margin" Value="2,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource SurfaceStrongBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.85" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Thin audio level meter. -->
+    <Style x:Key="LevelMeter" TargetType="ProgressBar">
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="1" />
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Border x:Name="PART_Track" CornerRadius="2" Background="{StaticResource SurfaceStrongBrush}" />
+                        <Border x:Name="PART_Indicator" CornerRadius="2" HorizontalAlignment="Left"
+                                Background="{TemplateBinding Foreground}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MutedText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="SectionHeader" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+
+    <!-- Read-only text the user can select with the mouse. -->
+    <Style x:Key="SelectableText" TargetType="TextBox">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="CaretBrush" Value="Transparent" />
+    </Style>
+
+    <!-- Slim dark scrollbar for the glass windows. -->
+    <Style x:Key="GlassScrollViewer" TargetType="ScrollViewer">
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+</ResourceDictionary>

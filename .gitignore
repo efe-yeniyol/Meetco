@@ -37,3 +37,11 @@ credentials*
 
 # Local code-signing choice
 .signing-identity
+
+# Windows app (.NET) build output
+windows/**/bin/
+windows/**/obj/
+windows/publish/
+windows/TestResults/
+.vs/
+*.user

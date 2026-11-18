@@ -1,0 +1,111 @@
+<Window x:Class="MeetcoApp.Views.ControlBarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Meetco"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="{Binding Settings.AlwaysOnTop}"
+        FontFamily="{StaticResource UiFont}"
+        Foreground="{StaticResource TextBrush}">
+
+    <Border Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}"
+            BorderThickness="1" CornerRadius="12" Padding="8,6" Margin="6"
+            MouseLeftButtonDown="OnDragAreaMouseDown">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+            <TextBlock Text="Meetco" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Margin="4,0,8,0" />
+
+            <!-- Listen / Stop -->
+            <Button Command="{Binding ToggleListeningCommand}" ToolTip="Start or stop listening (Ctrl+Alt+L)">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource AccentButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Session.IsListening}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource ListeningBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Session.IsBusy}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="7" Height="7" Fill="White" Margin="0,0,6,0" VerticalAlignment="Center"
+                             Visibility="{Binding Session.IsListening, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding ListenButtonText}" />
+                </StackPanel>
+            </Button>
+
+            <TextBlock Text="{Binding ElapsedText}" VerticalAlignment="Center" Margin="4,0" MinWidth="34"
+                       Foreground="{StaticResource MutedTextBrush}" FontSize="12"
+                       Visibility="{Binding ElapsedText, Converter={StaticResource HasContentToVisibility}}" />
+
+            <!-- Capture mode -->
+            <Button x:Name="ModeButton" Style="{StaticResource GlassButton}" Click="OnModeButtonClick"
+                    ToolTip="Which audio Meetco listens to">
+                <TextBlock>
+                    <Run Text="{Binding CaptureModeText, Mode=OneWay}" />
+                    <Run Text=" ▾" Foreground="{StaticResource MutedTextBrush}" />
+                </TextBlock>
+            </Button>
+
+            <!-- Level meters -->
+            <StackPanel VerticalAlignment="Center" Margin="6,0">
+                <ProgressBar Style="{StaticResource LevelMeter}" Foreground="{StaticResource SystemLevelBrush}" Margin="0,0,0,3"
+                             Value="{Binding Session.SystemLevel, Mode=OneWay, Converter={StaticResource Level}}"
+                             ToolTip="System audio (participants)" />
+                <ProgressBar Style="{StaticResource LevelMeter}" Foreground="{StaticResource MicLevelBrush}"
+                             Value="{Binding Session.MicrophoneLevel, Mode=OneWay, Converter={StaticResource Level}}"
+                             ToolTip="Your microphone" />
+            </StackPanel>
+
+            <ToggleButton Style="{StaticResource GlassToggle}" IsChecked="{Binding Session.IsMicrophoneMuted, Mode=TwoWay}"
+                          ToolTip="Mute your microphone for Meetco (the meeting is not affected)">
+                <TextBlock>
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Mic on" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Session.IsMicrophoneMuted}" Value="True">
+                                    <Setter Property="Text" Value="Mic muted" />
+                                    <Setter Property="Foreground" Value="{StaticResource ListeningBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </ToggleButton>
+
+            <Rectangle Width="1" Height="18" Fill="{StaticResource GlassBorderBrush}" Margin="6,0" />
+
+            <Button Style="{StaticResource GlassButton}" Content="What should I say?" Command="{Binding WhatShouldISayCommand}"
+                    ToolTip="Ctrl+Alt+A" />
+            <Button Style="{StaticResource GlassButton}" Content="Recap" Command="{Binding RecapCommand}"
+                    ToolTip="Ctrl+Alt+R" />
+
+            <Rectangle Width="1" Height="18" Fill="{StaticResource GlassBorderBrush}" Margin="6,0" />
+
+            <Button Style="{StaticResource QuietButton}" Command="{Binding TogglePanelCommand}" ToolTip="Show or hide the panel (Ctrl+Alt+M)">
+                <TextBlock>
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="Show panel" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPanelVisible}" Value="True">
+                                    <Setter Property="Text" Value="Hide panel" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Button>
+            <Button Style="{StaticResource QuietButton}" Content="Settings" Command="{Binding OpenSettingsCommand}" />
+            <Button Style="{StaticResource QuietButton}" Content="✕" Command="{Binding QuitCommand}" ToolTip="Quit Meetco" />
+        </StackPanel>
+    </Border>
+</Window>
