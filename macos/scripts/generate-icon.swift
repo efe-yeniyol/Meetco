@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 // Generates Meetco's app icon PNGs into the asset catalog.
-// Usage: swift scripts/generate-icon.swift
+// Usage (from macos/): swift scripts/generate-icon.swift
 import AppKit
 
 let output = URL(fileURLWithPath: "Meetco/Resources/Assets.xcassets/AppIcon.appiconset", isDirectory: true)

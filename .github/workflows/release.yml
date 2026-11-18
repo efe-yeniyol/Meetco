@@ -1,0 +1,112 @@
+name: Release
+
+# Push a tag like v1.2.0 to build both apps and publish a GitHub release.
+# The README links to releases/latest/download/<asset>, so asset names must stay the same.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            asset: Meetco-Windows-x64.zip
+          - rid: win-arm64
+            asset: Meetco-Windows-arm64.zip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: windows/global.json
+
+      - name: Test core
+        if: matrix.rid == 'win-x64'
+        working-directory: windows
+        run: dotnet test tests/Meetco.Core.Tests/Meetco.Core.Tests.csproj --configuration Release
+
+      - name: Publish
+        working-directory: windows
+        run: >
+          dotnet publish src/Meetco.App/Meetco.App.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -p:Version=${{ env.TAG }}
+          --output publish/${{ matrix.rid }}
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          Copy-Item LICENSE windows/publish/${{ matrix.rid }}/LICENSE.txt
+          Compress-Archive -Path windows/publish/${{ matrix.rid }}/* -DestinationPath ${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Test
+        run: make -C macos test
+
+      - name: Build (ad-hoc signed)
+        env:
+          MEETCO_SIGN_IDENTITY: "-"
+        run: make -C macos build
+
+      - name: Zip
+        run: ditto -c -k --sequesterRsrc --keepParent macos/build/Meetco.app Meetco-macOS.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Meetco-macOS.zip
+          path: Meetco-macOS.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Meetco ${{ env.TAG }}
+          generate_release_notes: true
+          files: assets/*.zip
