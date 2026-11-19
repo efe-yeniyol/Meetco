@@ -15,6 +15,16 @@
   <a href="#download"><img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows"></a>
   <img alt="Bring your own key" src="https://img.shields.io/badge/account-none%2C%20bring%20your%20own%20key-success">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
+  <a href="https://github.com/efe-yeniyol/Meetco/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/efe-yeniyol/Meetco"></a>
+</p>
+
+<p align="center">
+  <a href="#download">Download</a> ·
+  <a href="#get-started">Get started</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#models">Models</a> ·
+  <a href="#privacy-and-security">Privacy</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
 ---
@@ -33,9 +43,11 @@
 | **Windows** (most PCs) | [**Meetco-Windows-x64.zip**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-Windows-x64.zip) | Windows 10 (2004+) or 11 |
 | **Windows on ARM** (e.g. Snapdragon) | [**Meetco-Windows-arm64.zip**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-Windows-arm64.zip) | Windows 11 |
 
-All versions and checksums: **[Releases](https://github.com/efe-yeniyol/Meetco/releases)**. You also need an
-**[OpenAI API key](https://platform.openai.com/api-keys)** with billing enabled (a ChatGPT Plus
-subscription does not include API access), or a key for another [supported provider](#models).
+All versions and checksums: **[Releases](https://github.com/efe-yeniyol/Meetco/releases)**.
+
+You also need an AI provider: an **[OpenAI API key](https://platform.openai.com/api-keys)** with
+billing enabled (a ChatGPT Plus subscription does not include API access), a Claude or DeepSeek key,
+or a free local model via Ollama or LM Studio. See [Models](#models).
 
 ### Install
 
@@ -68,13 +80,13 @@ calls, demos, project and team meetings, and conversations in a second language.
 - **Answers in your voice.** When someone asks you a question, Meetco writes the answer in the first person, ready to say out loud, in the speaker's language, with an optional Turkish or English translation.
 - **No meeting bot.** Meetco never joins the call. It listens to your computer's audio output and, optionally, your microphone.
 - **You stay in control.** Meetco never speaks, types or sends anything for you. You read the suggestion or copy it.
-- **Bring your own key.** There is no Meetco account, server or subscription. All AI usage goes through your own OpenAI API key.
+- **Bring your own key, or run it locally.** There is no Meetco account, server or subscription. AI usage goes through your own key (OpenAI, Claude, DeepSeek…) or a model on your own computer.
 - **Native and lightweight.** SwiftUI on macOS, WPF on Windows. No Electron, no web views.
 
 ## Get started
 
 1. **Download** and open Meetco for your platform (see above).
-2. **Paste your OpenAI API key** in the welcome window. It is stored only in the macOS Keychain or the Windows Credential Manager.
+2. **Add your API key** in the welcome window (or skip it and choose Claude, DeepSeek or a local model in **Settings → Assistant**). Keys are stored only in the macOS Keychain or the Windows Credential Manager.
 3. **Allow audio access** when asked: on macOS, *Screen & System Audio Recording* and *Microphone*; on Windows, only the microphone.
 4. Click **Listen**, then join your call. Use headphones so your microphone doesn't pick up the other participants.
 
@@ -92,7 +104,7 @@ Platform guides: **[macOS](macos/README.md)** · **[Windows](windows/README.md)*
 
 **Listening and transcription**
 - Captures system audio and your microphone, with three modes: Mic + System, System only, Mic only.
-- Live transcription over OpenAI's Realtime API, with an automatic fallback to file uploads.
+- Live transcription over OpenAI's Realtime API, with an automatic fallback to file uploads, or fully **on-device** transcription.
 - On-device voice activity detection, so silence is never sent.
 - Chronological transcript labeled "Participants" / "You".
 
@@ -101,18 +113,22 @@ Platform guides: **[macOS](macos/README.md)** · **[Windows](windows/README.md)*
 - Global shortcuts, first-launch onboarding and a full Settings window.
 - Optional: keep Meetco out of your screen shares, and keep a local transcript history (both off by default).
 
+Coming next: meeting memory, a knowledge base from your own documents, post-meeting summaries and
+more. See the **[Roadmap](ROADMAP.md)**.
+
 ## How it works
 
 ```
  Meeting audio ──► Voice activity detection ──► Live transcription ──► Question detection
- (system + mic)    (on-device, drops silence)    (OpenAI Realtime)      (on-device)
+ (system + mic)    (on-device, drops silence)    (OpenAI or on-device)  (on-device)
                                                                               │
-          Floating panel ◄── Answer typed out in your voice ◄── OpenAI chat model
+          Floating panel ◄── Answer typed out in your voice ◄── Assistant model
+                                                     (OpenAI, Claude, DeepSeek or local)
 ```
 
-1. Meetco detects speech on your computer and streams only the speech to OpenAI while it is being spoken.
+1. Meetco detects speech on your computer and transcribes only the speech, either live with OpenAI or on your computer.
 2. When the speaker pauses (about 0.35 s), the phrase is committed and its transcript comes back.
-3. If a participant's phrase looks like a question, Meetco asks the chat model for an answer straight away.
+3. If a participant's phrase looks like a question, Meetco asks the assistant model for an answer straight away.
 4. The answer streams back as plain text and appears on screen as it is written.
 
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -141,7 +157,7 @@ explanation language **Off** if you don't need a translation.
 
 - **Your API key stays in your operating system's secure store** (macOS Keychain or Windows Credential Manager). It never appears in files, logs or this repository.
 - **Audio is never written to disk.**
-- **Speech and transcript excerpts are sent to OpenAI** using your key. Voice activity detection and question detection run on your computer.
+- **Only what is needed leaves your computer.** Speech goes to OpenAI only if you use cloud transcription; transcript excerpts go to the assistant provider you chose. With on-device transcription and a local model, nothing leaves your computer. Voice activity detection and question detection always run locally.
 - **No account, backend, analytics or telemetry.**
 - Screenshots are taken only when you press the camera button.
 
@@ -163,6 +179,7 @@ Meetco is a note-taking and preparation aid for meetings you take part in. Use i
 git clone https://github.com/efe-yeniyol/Meetco.git
 cd Meetco
 make install          # build and install to /Applications
+make dmg              # build the release DMG into macos/build
 make test             # unit tests
 ```
 
@@ -187,6 +204,7 @@ Meetco/
 ├── scripts/        Repository tools (secret scanning)
 ├── .github/        CI and release workflows
 ├── Makefile        Shortcuts for both apps (`make help`)
+├── ROADMAP.md      What we plan to build next
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 └── LICENSE
@@ -204,4 +222,4 @@ security problem, follow [SECURITY.md](SECURITY.md) instead of opening a public 
 
 Meetco is released under the [MIT License](LICENSE).
 
-Meetco is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by OpenAI, Google or Microsoft. "OpenAI", "Google Meet" and "Microsoft Teams" are trademarks of their respective owners. AI suggestions can be wrong, so check them before you rely on them. You are responsible for how you use Meetco and for complying with recording laws and the policies of your organization and the meetings you join.
+Meetco is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by OpenAI, Anthropic, DeepSeek, Google or Microsoft. "OpenAI", "Claude", "DeepSeek", "Google Meet" and "Microsoft Teams" are trademarks of their respective owners. AI suggestions can be wrong, so check them before you rely on them. You are responsible for how you use Meetco and for complying with recording laws and the policies of your organization and the meetings you join.
