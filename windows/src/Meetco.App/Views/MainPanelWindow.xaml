@@ -13,7 +13,7 @@
         FontFamily="{StaticResource UiFont}"
         Foreground="{StaticResource TextBrush}">
 
-    <Border Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}"
+    <Border Background="{DynamicResource GlassBrush}" BorderBrush="{DynamicResource GlassBorderBrush}"
             BorderThickness="1" CornerRadius="12">
         <Grid Margin="10,8,10,10">
             <Grid.RowDefinitions>
@@ -70,7 +70,7 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Suggestions.HasPendingScreenContext}" Value="True">
                                         <Setter Property="Content" Value="Screenshot attached ✓" />
-                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Suggestions.IsCapturingScreen}" Value="True">
                                         <Setter Property="Content" Value="Capturing…" />
@@ -161,7 +161,7 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Suggestions.CurrentSuggestion.Title}" Style="{StaticResource SectionHeader}" Margin="0" />
-                            <TextBlock Text="  •  writing…" Foreground="{StaticResource AccentBrush}" FontSize="11"
+                            <TextBlock Text="  •  writing…" Foreground="{DynamicResource AccentBrush}" FontSize="11"
                                        Visibility="{Binding Suggestions.IsStreamingCurrent, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </DockPanel>
@@ -197,7 +197,7 @@
                                     <DataTemplate>
                                         <StackPanel Margin="0,0,0,6">
                                             <TextBlock TextWrapping="Wrap" FontSize="14">
-                                                <Run Text="•  " Foreground="{StaticResource AccentBrush}" />
+                                                <Run Text="•  " Foreground="{DynamicResource AccentBrush}" />
                                                 <Run Text="{Binding Text, Mode=OneWay}" />
                                             </TextBlock>
                                             <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="14,2,0,0"
@@ -264,7 +264,7 @@
                                             <Setter Property="Background" Value="Transparent" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsQuestion}" Value="True">
-                                                    <Setter Property="Background" Value="{StaticResource QuestionHighlightBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource QuestionHighlightBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

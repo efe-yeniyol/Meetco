@@ -13,7 +13,7 @@
         FontFamily="{StaticResource UiFont}"
         Foreground="{StaticResource TextBrush}">
 
-    <Border Background="{StaticResource GlassBrush}" BorderBrush="{StaticResource GlassBorderBrush}"
+    <Border Background="{DynamicResource GlassBrush}" BorderBrush="{DynamicResource GlassBorderBrush}"
             BorderThickness="1" CornerRadius="12" Padding="8,6" Margin="6"
             MouseLeftButtonDown="OnDragAreaMouseDown">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -81,14 +81,14 @@
                 </TextBlock>
             </ToggleButton>
 
-            <Rectangle Width="1" Height="18" Fill="{StaticResource GlassBorderBrush}" Margin="6,0" />
+            <Rectangle Width="1" Height="18" Fill="{DynamicResource GlassBorderBrush}" Margin="6,0" />
 
             <Button Style="{StaticResource GlassButton}" Content="What should I say?" Command="{Binding WhatShouldISayCommand}"
                     ToolTip="Ctrl+Alt+A" />
             <Button Style="{StaticResource GlassButton}" Content="Recap" Command="{Binding RecapCommand}"
                     ToolTip="Ctrl+Alt+R" />
 
-            <Rectangle Width="1" Height="18" Fill="{StaticResource GlassBorderBrush}" Margin="6,0" />
+            <Rectangle Width="1" Height="18" Fill="{DynamicResource GlassBorderBrush}" Margin="6,0" />
 
             <Button Style="{StaticResource QuietButton}" Command="{Binding TogglePanelCommand}" ToolTip="Show or hide the panel (Ctrl+Alt+M)">
                 <TextBlock>

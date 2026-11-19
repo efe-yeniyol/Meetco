@@ -21,6 +21,7 @@ enum SettingsKeys {
     static let captureMode = "settings.captureMode"
     static let microphoneDeviceUID = "settings.microphoneDeviceUID"
     static let appearance = "settings.appearance"
+    static let glassTint = "settings.glassTint"
     static let defaultPanelSize = "settings.defaultPanelSize"
     static let alwaysOnTop = "settings.alwaysOnTop"
     static let showOnAllSpaces = "settings.showOnAllSpaces"
@@ -62,6 +63,7 @@ final class SettingsStore {
 
     // General
     var appearance: AppearanceMode { didSet { save(appearance, SettingsKeys.appearance) } }
+    var glassTint: GlassTint { didSet { save(glassTint, SettingsKeys.glassTint) } }
     var defaultPanelSize: PanelSize { didSet { save(defaultPanelSize, SettingsKeys.defaultPanelSize) } }
     var alwaysOnTop: Bool { didSet { defaults.set(alwaysOnTop, forKey: SettingsKeys.alwaysOnTop) } }
     var showOnAllSpaces: Bool { didSet { defaults.set(showOnAllSpaces, forKey: SettingsKeys.showOnAllSpaces) } }
@@ -99,6 +101,7 @@ final class SettingsStore {
         captureMode = Self.load(defaults, SettingsKeys.captureMode, .systemAndMicrophone)
         microphoneDeviceUID = defaults.string(forKey: SettingsKeys.microphoneDeviceUID)
         appearance = Self.load(defaults, SettingsKeys.appearance, .dark)
+        glassTint = Self.load(defaults, SettingsKeys.glassTint, .neutral)
         defaultPanelSize = Self.load(defaults, SettingsKeys.defaultPanelSize, .expanded)
         alwaysOnTop = defaults.object(forKey: SettingsKeys.alwaysOnTop) as? Bool ?? true
         showOnAllSpaces = defaults.object(forKey: SettingsKeys.showOnAllSpaces) as? Bool ?? true
