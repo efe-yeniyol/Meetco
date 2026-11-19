@@ -5,6 +5,7 @@
         Width="520" SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowTintBrush}"
         FontFamily="{StaticResource UiFont}">
 
     <Window.Resources>

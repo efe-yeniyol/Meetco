@@ -17,6 +17,8 @@
     <SolidColorBrush x:Key="QuestionHighlightBrush" Color="#260A84FF" />
     <SolidColorBrush x:Key="SystemLevelBrush" Color="#FF64D2FF" />
     <SolidColorBrush x:Key="MicLevelBrush" Color="#FF30D158" />
+    <!-- Background of the regular windows (Settings, Welcome); recoloured with the glass tint. -->
+    <SolidColorBrush x:Key="WindowTintBrush" Color="#FFFFFFFF" />
 
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
 
@@ -60,7 +62,7 @@
     </Style>
 
     <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource GlassButton}">
-        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
@@ -141,7 +143,7 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="CaretBrush" Value="Transparent" />
     </Style>
 

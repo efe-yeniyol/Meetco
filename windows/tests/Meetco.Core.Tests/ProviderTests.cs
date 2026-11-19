@@ -221,6 +221,8 @@ public class ProviderTests
             settings.SetBaseUrl(AssistantProvider.Ollama, "http://gpu-box:11434/v1");
             settings.TranscriptionProvider = TranscriptionProvider.OnDevice;
             settings.WhisperModel = WhisperModelSize.LargeTurbo;
+            Assert.Equal(GlassTint.Neutral, settings.GlassTint);
+            settings.GlassTint = GlassTint.Teal;
 
             var reloaded = AppSettings.Load(path);
             Assert.Equal(AssistantProvider.DeepSeek, reloaded.AssistantProvider);
@@ -230,6 +232,7 @@ public class ProviderTests
             Assert.Equal(AssistantProvider.LMStudio.DefaultBaseUrl(), reloaded.ConfigurationFor(AssistantProvider.LMStudio).BaseUrl);
             Assert.Equal(TranscriptionProvider.OnDevice, reloaded.TranscriptionProvider);
             Assert.Equal(WhisperModelSize.LargeTurbo, reloaded.WhisperModel);
+            Assert.Equal(GlassTint.Teal, reloaded.GlassTint);
         }
         finally
         {

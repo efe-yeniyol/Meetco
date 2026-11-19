@@ -86,6 +86,9 @@ public sealed class SettingsViewModel : ObservableObject
     public IReadOnlyList<Option> CaptureModes { get; } =
         Enum.GetValues<AudioCaptureMode>().Select(v => new Option(v, v.Title())).ToList();
 
+    public IReadOnlyList<Option> GlassTints { get; } =
+        Enum.GetValues<GlassTint>().Select(v => new Option(v, v.Title())).ToList();
+
     public IReadOnlyList<Option> PanelSizes { get; } =
         Enum.GetValues<PanelSize>().Select(v => new Option(v, v.ToString())).ToList();
 

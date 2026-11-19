@@ -3,6 +3,7 @@ import SwiftUI
 /// Native Settings window with tabs.
 struct SettingsView: View {
     @Environment(\.settingsDependencies) private var dependencies
+    @Environment(SettingsStore.self) private var settings
 
     var body: some View {
         TabView {
@@ -36,6 +37,8 @@ struct SettingsView: View {
             }
             .tabItem { Label("Privacy", systemImage: "hand.raised") }
         }
+        .scrollContentBackground(settings.glassTint == .neutral ? .automatic : .hidden)
+        .background(TintedWindowBackground())
         .frame(width: 600, height: 560)
     }
 }

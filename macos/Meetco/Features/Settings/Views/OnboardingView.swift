@@ -10,6 +10,7 @@ struct OnboardingView: View {
         ZStack {
             VisualEffectBackground(material: .underWindowBackground)
                 .ignoresSafeArea()
+            TintedWindowBackground()
             if let dependencies {
                 OnboardingContent(dependencies: dependencies) {
                     settings.hasCompletedOnboarding = true
