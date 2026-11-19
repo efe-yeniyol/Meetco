@@ -262,6 +262,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Meetco.entitlements;
+				INFOPLIST_FILE = Config/Info.plist;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -272,7 +273,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Meetco;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Meetco contributors. MIT License.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Meetco listens to your microphone only while you start listening, so it can transcribe your side of the meeting. Audio is sent to OpenAI with your own API key for transcription and is never recorded to disk.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Meetco listens to your microphone only while you start listening, so it can transcribe your side of the meeting. Audio is transcribed on your Mac or sent to OpenAI with your own API key, as you choose, and is never recorded to disk.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -291,6 +292,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Meetco.entitlements;
+				INFOPLIST_FILE = Config/Info.plist;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -301,7 +303,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Meetco;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Meetco contributors. MIT License.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Meetco listens to your microphone only while you start listening, so it can transcribe your side of the meeting. Audio is sent to OpenAI with your own API key for transcription and is never recorded to disk.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Meetco listens to your microphone only while you start listening, so it can transcribe your side of the meeting. Audio is transcribed on your Mac or sent to OpenAI with your own API key, as you choose, and is never recorded to disk.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

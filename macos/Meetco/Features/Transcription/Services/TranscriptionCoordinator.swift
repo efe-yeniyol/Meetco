@@ -30,7 +30,8 @@ final class TranscriptionCoordinator {
         let options = TranscriptionOptions(
             model: settings.transcriptionModel,
             languageCode: settings.transcriptionLanguage.isoCode,
-            prompt: store.recentText(from: chunk.source, maxCharacters: 200)
+            prompt: store.recentText(from: chunk.source, maxCharacters: 200),
+            provider: settings.transcriptionProvider
         )
         inFlightCount += 1
         Log.transcription.debug("Transcribing \(chunk.source.rawValue, privacy: .public) chunk #\(chunk.sequence) (\(chunk.duration, format: .fixed(precision: 1))s)")

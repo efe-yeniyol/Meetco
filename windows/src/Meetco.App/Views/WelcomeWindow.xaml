@@ -29,7 +29,27 @@
         <TextBlock Style="{StaticResource Body}"
                    Text="Please use Meetco openly, with the knowledge of the people you meet, and follow the consent rules that apply to you." />
 
-        <TextBlock Text="1. Add your OpenAI API key" Style="{StaticResource Heading}" />
+        <TextBlock Text="1. Choose how Meetco transcribes" Style="{StaticResource Heading}" />
+        <ComboBox ItemsSource="{Binding TranscriptionProviders}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                  SelectedValue="{Binding Settings.TranscriptionProvider}" />
+        <StackPanel Visibility="{Binding UsesOnDeviceTranscription, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+            <ComboBox ItemsSource="{Binding WhisperModelOptions}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                      SelectedValue="{Binding Settings.WhisperModel}" IsEnabled="{Binding IsDownloading, Converter={StaticResource InvertBool}}" />
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button Content="Download model" Padding="12,4" Margin="0,0,8,0" Click="OnDownloadWhisper"
+                        Visibility="{Binding CanDownloadWhisper, Converter={StaticResource BoolToVisibility}}" />
+                <Button Content="Cancel" Padding="12,4" Click="OnCancelDownload"
+                        Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+            <ProgressBar Height="6" Margin="0,8,0,0" Maximum="100" Value="{Binding DownloadProgress, Mode=OneWay}"
+                         Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{Binding WhisperStatus}" Foreground="#FF6B6B73" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <TextBlock Text="2. Add your OpenAI API key" Style="{StaticResource Heading}" />
+        <TextBlock Foreground="#FF6B6B73" FontSize="12" Margin="0,0,0,6" TextWrapping="Wrap"
+                   Visibility="{Binding UsesOnDeviceTranscription, Converter={StaticResource BoolToVisibility}}"
+                   Text="Optional with on-device transcription: add it for OpenAI answers, or skip it and choose Claude, DeepSeek or a local model in Settings → Assistant." />
         <PasswordBox x:Name="KeyBox" Padding="4" />
         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
             <Button Content="Save API Key" Padding="12,4" Margin="0,0,8,0" Click="OnSaveKey" />
@@ -40,11 +60,11 @@
         <TextBlock Foreground="#FF6B6B73" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
                    Text="Create one at platform.openai.com/api-keys. API billing must be enabled (a ChatGPT subscription does not include API access). The key is stored only in Windows Credential Manager." />
 
-        <TextBlock Text="2. Allow the microphone" Style="{StaticResource Heading}" />
+        <TextBlock Text="3. Allow the microphone" Style="{StaticResource Heading}" />
         <TextBlock Style="{StaticResource Body}"
                    Text="Windows Settings → Privacy &amp; security → Microphone: turn on &quot;Microphone access&quot; and &quot;Let desktop apps access your microphone&quot;. System audio needs no permission." />
 
-        <TextBlock Text="3. Start a meeting" Style="{StaticResource Heading}" />
+        <TextBlock Text="4. Start a meeting" Style="{StaticResource Heading}" />
         <TextBlock Style="{StaticResource Body}"
                    Text="Click Listen on the Meetco toolbar at the top of the screen, then join your call. Shortcuts: Ctrl+Alt+L listen, Ctrl+Alt+A what should I say, Ctrl+Alt+H show/hide Meetco." />
 

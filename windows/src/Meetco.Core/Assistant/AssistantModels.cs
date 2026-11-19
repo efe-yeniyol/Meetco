@@ -32,6 +32,8 @@ public sealed record AssistantRequest
     public ScreenContext? ScreenContext { get; init; }
     /// <summary>Recent suggestions, so the model avoids repeating itself.</summary>
     public IReadOnlyList<string> PreviousAnswers { get; init; } = [];
+    /// <summary>Who answers: decides the wire protocol and which request options are sent.</summary>
+    public AssistantProvider Provider { get; init; } = AssistantProvider.OpenAI;
 }
 
 /// <summary>An answer that is still being streamed.</summary>

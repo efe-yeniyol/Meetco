@@ -2,7 +2,7 @@ using Meetco.Core.Infrastructure;
 
 namespace Meetco.Core.Settings;
 
-/// <summary>Stores the user's OpenAI API key securely (Windows Credential Manager in the app).</summary>
+/// <summary>Stores an API key securely (Windows Credential Manager in the app).</summary>
 public interface IApiKeyStore
 {
     string? Load();
@@ -76,4 +76,28 @@ public sealed class ApiKeyProvider
     /// <summary>Masked form for display, e.g. "sk-…a1B2".</summary>
     public static string Mask(string key) =>
         key.Length <= 8 ? new string('•', key.Length) : key[..3] + "…" + key[^4..];
+}
+
+/// <summary>
+/// One <see cref="ApiKeyProvider"/> per assistant provider, each backed by its own secure item.
+/// OpenAI's provider is the same instance transcription uses.
+/// </summary>
+public sealed class ApiKeyRegistry
+{
+    private readonly Dictionary<Models.AssistantProvider, ApiKeyProvider> _providers;
+
+    public ApiKeyRegistry(ApiKeyProvider openAI, Func<Models.AssistantProvider, IApiKeyStore> store)
+    {
+        _providers = new() { [Models.AssistantProvider.OpenAI] = openAI };
+        foreach (var provider in Enum.GetValues<Models.AssistantProvider>().Where(p => p != Models.AssistantProvider.OpenAI))
+        {
+            _providers[provider] = new ApiKeyProvider(store(provider));
+        }
+    }
+
+    public ApiKeyProvider For(Models.AssistantProvider provider) => _providers[provider];
+
+    /// <summary>Whether the provider can be called: it has a key, or needs none.</summary>
+    public bool IsReady(Models.AssistantProvider provider) =>
+        !Models.AssistantProviderInfo.RequiresApiKey(provider) || For(provider).HasKey;
 }

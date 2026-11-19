@@ -4,7 +4,13 @@ import Observation
 enum SettingsKeys {
     static let chatModel = "settings.chatModel"
     static let transcriptionModel = "settings.transcriptionModel"
+    static let transcriptionProvider = "settings.transcriptionProvider"
     static let apiBaseURL = "settings.apiBaseURL"
+    static let assistantProvider = "settings.assistantProvider"
+    /// Model per non-OpenAI provider, keyed by `AssistantProvider.rawValue`.
+    static let providerModels = "settings.providerModels"
+    /// Base URL per non-OpenAI provider, keyed by `AssistantProvider.rawValue`.
+    static let providerBaseURLs = "settings.providerBaseURLs"
     static let responseLanguage = "settings.responseLanguage"
     static let explanationLanguage = "settings.explanationLanguage"
     static let responseStyle = "settings.responseStyle"
@@ -35,7 +41,13 @@ final class SettingsStore {
     // OpenAI
     var chatModel: String { didSet { defaults.set(chatModel, forKey: SettingsKeys.chatModel) } }
     var transcriptionModel: String { didSet { defaults.set(transcriptionModel, forKey: SettingsKeys.transcriptionModel) } }
+    var transcriptionProvider: TranscriptionProvider { didSet { save(transcriptionProvider, SettingsKeys.transcriptionProvider) } }
     var apiBaseURL: String { didSet { defaults.set(apiBaseURL, forKey: SettingsKeys.apiBaseURL) } }
+
+    // Assistant provider
+    var assistantProvider: AssistantProvider { didSet { save(assistantProvider, SettingsKeys.assistantProvider) } }
+    var providerModels: [String: String] { didSet { defaults.set(providerModels, forKey: SettingsKeys.providerModels) } }
+    var providerBaseURLs: [String: String] { didSet { defaults.set(providerBaseURLs, forKey: SettingsKeys.providerBaseURLs) } }
     var responseLanguage: ResponseLanguage { didSet { save(responseLanguage, SettingsKeys.responseLanguage) } }
     var explanationLanguage: ExplanationLanguage { didSet { save(explanationLanguage, SettingsKeys.explanationLanguage) } }
     var responseStyle: ResponseStyle { didSet { save(responseStyle, SettingsKeys.responseStyle) } }
@@ -71,6 +83,12 @@ final class SettingsStore {
         let savedTranscription = defaults.string(forKey: SettingsKeys.transcriptionModel)
         transcriptionModel = savedTranscription.flatMap { ModelCatalog.supersededTranscriptionDefaults.contains($0) ? nil : $0 } ?? ModelCatalog.defaultTranscriptionModel
         apiBaseURL = defaults.string(forKey: SettingsKeys.apiBaseURL) ?? OpenAIConfiguration.defaultBaseURL.absoluteString
+        assistantProvider = Self.load(defaults, SettingsKeys.assistantProvider, .openAI)
+        let savedTranscriptionProvider: TranscriptionProvider = Self.load(defaults, SettingsKeys.transcriptionProvider, .openAI)
+        // A choice synced from a newer Mac falls back to OpenAI where the on-device model can't run.
+        transcriptionProvider = savedTranscriptionProvider == .onDevice && !TranscriptionProvider.isOnDeviceAvailable ? .openAI : savedTranscriptionProvider
+        providerModels = defaults.dictionary(forKey: SettingsKeys.providerModels) as? [String: String] ?? [:]
+        providerBaseURLs = defaults.dictionary(forKey: SettingsKeys.providerBaseURLs) as? [String: String] ?? [:]
         responseLanguage = Self.load(defaults, SettingsKeys.responseLanguage, .auto)
         explanationLanguage = Self.load(defaults, SettingsKeys.explanationLanguage, .turkish)
         responseStyle = Self.load(defaults, SettingsKeys.responseStyle, .concise)
@@ -90,6 +108,30 @@ final class SettingsStore {
         clearTranscriptOnNewSession = defaults.object(forKey: SettingsKeys.clearTranscriptOnNewSession) as? Bool ?? true
         saveTranscriptsLocally = defaults.object(forKey: SettingsKeys.saveTranscriptsLocally) as? Bool ?? false
         hasCompletedOnboarding = defaults.bool(forKey: SettingsKeys.hasCompletedOnboarding)
+    }
+
+    /// Model used by `provider`. OpenAI keeps its original setting.
+    func model(for provider: AssistantProvider) -> String {
+        provider == .openAI ? chatModel : providerModels[provider.rawValue] ?? provider.defaultModel
+    }
+
+    func setModel(_ model: String, for provider: AssistantProvider) {
+        if provider == .openAI { chatModel = model } else { providerModels[provider.rawValue] = model }
+    }
+
+    /// Base URL text for `provider`. OpenAI's is shared with transcription.
+    func baseURL(for provider: AssistantProvider) -> String {
+        provider == .openAI ? apiBaseURL : providerBaseURLs[provider.rawValue] ?? provider.defaultBaseURL.absoluteString
+    }
+
+    func setBaseURL(_ url: String, for provider: AssistantProvider) {
+        if provider == .openAI { apiBaseURL = url } else { providerBaseURLs[provider.rawValue] = url }
+    }
+
+    /// The active assistant model.
+    var assistantModel: String {
+        get { model(for: assistantProvider) }
+        set { setModel(newValue, for: assistantProvider) }
     }
 
     var assistantPreferences: AssistantPreferences {

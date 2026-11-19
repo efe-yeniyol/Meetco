@@ -41,7 +41,7 @@ final class SuggestionEngine {
     @ObservationIgnored private let screenCapture: any ScreenContextCapturing
     @ObservationIgnored private let transcript: TranscriptStore
     @ObservationIgnored private let settings: SettingsStore
-    @ObservationIgnored private let keyProvider: APIKeyProvider
+    @ObservationIgnored private let keys: APIKeyRegistry
 
     @ObservationIgnored private var automaticTask: Task<Void, Never>?
     @ObservationIgnored private var manualTasks: [Suggestion.Kind: Task<Void, Never>] = [:]
@@ -57,16 +57,28 @@ final class SuggestionEngine {
         screenCapture: any ScreenContextCapturing,
         transcript: TranscriptStore,
         settings: SettingsStore,
-        keyProvider: APIKeyProvider
+        keys: APIKeyRegistry
     ) {
         self.assistant = assistant
         self.screenCapture = screenCapture
         self.transcript = transcript
         self.settings = settings
-        self.keyProvider = keyProvider
+        self.keys = keys
     }
 
     // MARK: Derived state
+
+    /// Why the assistant cannot be called right now, or nil when it can.
+    var assistantUnavailableReason: String? {
+        let provider = settings.assistantProvider
+        if !keys.isReady(provider) {
+            return ProviderError(provider: provider, underlying: .missingAPIKey).localizedDescription
+        }
+        if settings.assistantModel.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Choose a \(provider.shortName) model in Settings → Assistant."
+        }
+        return nil
+    }
 
     var isGenerating: Bool { !activeKinds.isEmpty }
 
@@ -111,7 +123,7 @@ final class SuggestionEngine {
     // MARK: Automatic triggering
 
     func handleNewSegment(_ segment: TranscriptSegment, captureMode: AudioCaptureMode) {
-        guard settings.autoSuggest, keyProvider.hasKey else { return }
+        guard settings.autoSuggest, assistantUnavailableReason == nil else { return }
         // Questions come from other participants; in mic-only mode (in-person) everyone is on the mic.
         let isFromOthers = segment.source == .system || captureMode == .microphoneOnly
         guard isFromOthers else { return }
@@ -288,8 +300,8 @@ final class SuggestionEngine {
         automatic: Bool = false,
         replacing: Suggestion? = nil
     ) -> Task<Void, Never>? {
-        guard keyProvider.hasKey else {
-            lastError = OpenAIError.missingAPIKey.localizedDescription
+        if let reason = assistantUnavailableReason {
+            lastError = reason
             return nil
         }
 
@@ -301,9 +313,10 @@ final class SuggestionEngine {
             transcript: transcript.recentLines(maxCharacters: budget),
             meetingTopic: meetingTopic,
             preferences: settings.assistantPreferences,
-            model: settings.chatModel,
+            model: settings.assistantModel,
             screenContext: pendingScreenContext,
-            previousAnswers: previousAnswers(excluding: replacing)
+            previousAnswers: previousAnswers(excluding: replacing),
+            provider: settings.assistantProvider
         )
         let usedScreen = request.screenContext != nil
         activeKinds.append(kind)

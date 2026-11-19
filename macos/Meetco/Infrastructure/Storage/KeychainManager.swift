@@ -16,7 +16,7 @@ enum KeychainError: LocalizedError {
     }
 }
 
-/// Stores the OpenAI API key as a generic password in the user's login Keychain.
+/// Stores an API key as a generic password in the user's login Keychain.
 /// The key never touches UserDefaults, files, or logs.
 final class KeychainManager: APIKeyStoring {
     private let service: String
@@ -25,6 +25,11 @@ final class KeychainManager: APIKeyStoring {
     init(service: String = "io.github.meetco.Meetco.openai", account: String = "openai-api-key") {
         self.service = service
         self.account = account
+    }
+
+    /// The Keychain item holding an assistant provider's key.
+    convenience init(provider: AssistantProvider) {
+        self.init(service: provider.keychainService, account: provider.keychainAccount)
     }
 
     private var baseQuery: [String: Any] {
@@ -66,7 +71,7 @@ final class KeychainManager: APIKeyStoring {
             var add = baseQuery
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            add[kSecAttrLabel as String] = "Meetco OpenAI API Key"
+            add[kSecAttrLabel as String] = "Meetco API Key (\(service.components(separatedBy: ".").last ?? service))"
             let addStatus = SecItemAdd(add as CFDictionary, nil)
             guard addStatus == errSecSuccess else { throw KeychainError.unexpectedStatus(addStatus) }
         default:

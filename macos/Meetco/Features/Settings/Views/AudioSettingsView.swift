@@ -24,7 +24,17 @@ struct AudioSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Transcription") {
+            Section {
+                Picker("Transcribe with", selection: $settings.transcriptionProvider) {
+                    ForEach(TranscriptionProvider.allCases) { provider in
+                        Text(provider.title).tag(provider)
+                            .disabled(provider == .onDevice && !TranscriptionProvider.isOnDeviceAvailable)
+                    }
+                }
+                Text(engineDetail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Picker("Spoken language", selection: $settings.transcriptionLanguage) {
                     ForEach(TranscriptionLanguage.allCases) { Text($0.title).tag($0) }
                 }
@@ -35,6 +45,8 @@ struct AudioSettingsView: View {
                 Text(settings.latencyProfile.detail)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            } header: {
+                Text("Transcription")
             }
 
             Section("Permissions") {
@@ -43,5 +55,17 @@ struct AudioSettingsView: View {
         }
         .formStyle(.grouped)
         .onAppear { devices = AudioDeviceManager.inputDevices() }
+    }
+
+    private var engineDetail: String {
+        guard TranscriptionProvider.isOnDeviceAvailable else {
+            return "On-device transcription needs macOS 26 or later. Audio is sent to OpenAI with your key."
+        }
+        switch settings.transcriptionProvider {
+        case .openAI:
+            return "Audio is sent to OpenAI with your key. Best accuracy and automatic language detection; the model is chosen in the OpenAI tab."
+        case .onDevice:
+            return "Apple's speech model runs on this Mac: audio never leaves it and there is no cost. The model for each language downloads once. Choose the spoken language for best results; \"Detect automatically\" uses your Mac's language."
+        }
     }
 }

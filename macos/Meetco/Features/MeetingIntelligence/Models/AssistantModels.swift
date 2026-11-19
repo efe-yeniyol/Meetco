@@ -47,6 +47,8 @@ struct AssistantRequest: Sendable {
     var screenContext: ScreenContext?
     /// Recent suggestions, so the model avoids repeating itself.
     var previousAnswers: [String] = []
+    /// Who answers: decides the wire protocol and which request options are sent.
+    var provider: AssistantProvider = .openAI
 }
 
 /// An answer that is still being streamed.

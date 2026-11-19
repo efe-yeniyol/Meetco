@@ -37,7 +37,7 @@ public sealed class SuggestionEngine : ObservableObject
     private readonly IScreenContextCapture? _screenCapture;
     private readonly TranscriptStore _transcript;
     private readonly AppSettings _settings;
-    private readonly ApiKeyProvider _keyProvider;
+    private readonly ApiKeyRegistry _keys;
     private readonly Func<DateTimeOffset> _now;
 
     private CancellationTokenSource? _automatic;
@@ -62,15 +62,27 @@ public sealed class SuggestionEngine : ObservableObject
         IScreenContextCapture? screenCapture,
         TranscriptStore transcript,
         AppSettings settings,
-        ApiKeyProvider keyProvider,
+        ApiKeyRegistry keys,
         Func<DateTimeOffset>? now = null)
     {
         _assistant = assistant;
         _screenCapture = screenCapture;
         _transcript = transcript;
         _settings = settings;
-        _keyProvider = keyProvider;
+        _keys = keys;
         _now = now ?? (() => DateTimeOffset.Now);
+    }
+
+    /// <summary>Why the assistant cannot be called right now, or null when it can.</summary>
+    public string? AssistantUnavailableReason
+    {
+        get
+        {
+            var provider = _settings.AssistantProvider;
+            if (!_keys.IsReady(provider)) return new ProviderException(provider, OpenAIException.MissingApiKey()).Message;
+            if (string.IsNullOrWhiteSpace(_settings.AssistantModel)) return $"Choose a {provider.ShortName()} model in Settings → Assistant.";
+            return null;
+        }
     }
 
     // MARK: Observable state
@@ -164,7 +176,7 @@ public sealed class SuggestionEngine : ObservableObject
 
     public void HandleNewSegment(TranscriptSegment segment, AudioCaptureMode captureMode)
     {
-        if (!_settings.AutoSuggest || !_keyProvider.HasKey) return;
+        if (!_settings.AutoSuggest || AssistantUnavailableReason is not null) return;
         // Questions come from other participants; in mic-only mode (in-person) everyone is on the mic.
         var isFromOthers = segment.Source == AudioSourceKind.System || captureMode == AudioCaptureMode.MicrophoneOnly;
         if (!isFromOthers) return;
@@ -346,9 +358,9 @@ public sealed class SuggestionEngine : ObservableObject
         bool automatic = false,
         Suggestion? replacing = null)
     {
-        if (!_keyProvider.HasKey)
+        if (AssistantUnavailableReason is { } reason)
         {
-            LastError = OpenAIException.MissingApiKey().Message;
+            LastError = reason;
             return null;
         }
 
@@ -361,7 +373,8 @@ public sealed class SuggestionEngine : ObservableObject
             Transcript = _transcript.RecentLines(budget),
             MeetingTopic = MeetingTopic,
             Preferences = _settings.AssistantPreferences,
-            Model = _settings.ChatModel,
+            Model = _settings.AssistantModel,
+            Provider = _settings.AssistantProvider,
             ScreenContext = PendingScreenContext,
             PreviousAnswers = PreviousAnswers(replacing),
         };

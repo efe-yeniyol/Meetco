@@ -24,29 +24,34 @@ enum OpenAIError: LocalizedError, Sendable, Equatable {
         return nil
     }
 
-    var errorDescription: String? {
+    var errorDescription: String? { description(service: "OpenAI", settingsTab: "OpenAI") }
+
+    /// User-facing message naming the service that failed (the same errors come from every OpenAI-compatible provider).
+    func description(service: String, settingsTab: String) -> String {
         switch self {
         case .missingAPIKey:
-            return "No OpenAI API key is configured. Add your key in Settings → OpenAI."
+            return "No \(service) API key is configured. Add your key in Settings → \(settingsTab)."
         case .http(let status, let message, let code, _):
             switch (status, code) {
             case (401, _):
-                return "OpenAI rejected the API key (401). Check the key in Settings → OpenAI."
+                return "\(service) rejected the API key (401). Check the key in Settings → \(settingsTab)."
             case (_, "insufficient_quota"):
-                return "Your OpenAI account has no available credit. Configure billing at platform.openai.com."
+                return "Your \(service) account has no available credit. Check billing in its dashboard."
+            case (402, _):
+                return "Your \(service) account has no available credit (402). \(message)"
             case (429, _):
-                return "OpenAI rate limit reached. Meetco will retry automatically. (\(message))"
+                return "\(service) rate limit reached. Meetco will retry automatically. (\(message))"
             case (404, _):
-                return "OpenAI could not find the requested model or endpoint (404). \(message)"
+                return "\(service) could not find the requested model or endpoint (404). \(message)"
             default:
-                return "OpenAI error \(status): \(message)"
+                return "\(service) error \(status): \(message)"
             }
         case .network(let message):
-            return "Network error: \(message)"
+            return "Network error reaching \(service): \(message)"
         case .decoding(let message):
-            return "Unexpected response from OpenAI: \(message)"
+            return "Unexpected response from \(service): \(message)"
         case .emptyResponse:
-            return "OpenAI returned an empty response."
+            return "\(service) returned an empty response."
         }
     }
 }
