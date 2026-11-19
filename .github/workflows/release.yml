@@ -1,7 +1,8 @@
 name: Release
 
 # Push a tag like v1.2.0 to build both apps and publish a GitHub release.
-# The README links to releases/latest/download/<asset>, so asset names must stay the same.
+# The README links to releases/latest/download/<asset>, so asset names must stay the same:
+# Meetco-macOS.dmg, Meetco-macOS.zip, Meetco-Windows-x64.zip, Meetco-Windows-arm64.zip.
 on:
   push:
     tags: ["v*"]
@@ -81,18 +82,26 @@ jobs:
       - name: Test
         run: make -C macos test
 
-      - name: Build (ad-hoc signed)
+      - name: Build universal app and DMG (ad-hoc signed)
         env:
           MEETCO_SIGN_IDENTITY: "-"
-        run: make -C macos build
+          MEETCO_VERSION: ${{ env.TAG }}
+        run: make -C macos dmg
 
-      - name: Zip
-        run: ditto -c -k --sequesterRsrc --keepParent macos/build/Meetco.app Meetco-macOS.zip
+      - name: Check architectures
+        run: lipo -archs macos/build/Meetco.app/Contents/MacOS/Meetco | grep -q "x86_64 arm64"
+
+      - name: Package
+        run: |
+          cp macos/build/Meetco-macOS.dmg Meetco-macOS.dmg
+          ditto -c -k --sequesterRsrc --keepParent macos/build/Meetco.app Meetco-macOS.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Meetco-macOS.zip
-          path: Meetco-macOS.zip
+          name: Meetco-macOS
+          path: |
+            Meetco-macOS.dmg
+            Meetco-macOS.zip
           if-no-files-found: error
 
   publish:
@@ -104,9 +113,34 @@ jobs:
           path: assets
           merge-multiple: true
 
+      - name: Checksums
+        working-directory: assets
+        run: sha256sum Meetco-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Release notes
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Download
+
+          | Platform | File |
+          |---|---|
+          | **macOS 14+** (Apple silicon & Intel) | **Meetco-macOS.dmg** — open it and drag Meetco to Applications |
+          | **Windows 10/11** (x64) | **Meetco-Windows-x64.zip** — unzip and run `Meetco.exe` |
+          | **Windows on ARM** | **Meetco-Windows-arm64.zip** |
+
+          **First launch (builds are not notarized yet):**
+          - **macOS:** open Meetco once, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+          - **Windows:** in the SmartScreen dialog, click **More info → Run anyway**.
+
+          You need your own API key (OpenAI, or another provider supported in Settings). `SHA256SUMS.txt` lists file checksums.
+          NOTES
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Meetco ${{ env.TAG }}
+          body_path: notes.md
           generate_release_notes: true
-          files: assets/*.zip
+          files: |
+            assets/Meetco-*
+            assets/SHA256SUMS.txt

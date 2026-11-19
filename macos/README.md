@@ -24,8 +24,8 @@ third-party dependencies. For an overview of Meetco and download links, see the
 
 ## Install a release
 
-1. Download **[Meetco-macOS.zip](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.zip)** and unzip it.
-2. Move **Meetco.app** to **Applications**.
+1. Download **[Meetco-macOS.dmg](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.dmg)** (universal: Apple silicon and Intel).
+2. Open it and drag **Meetco** onto **Applications**.
 3. Release builds are not notarized yet, so macOS blocks the first launch. Open Meetco once, then go to
    **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
 
@@ -46,6 +46,7 @@ Every command below works from the repository root (it forwards to `macos/`) or 
 | `make install` | Build Release and install to `/Applications` (recommended) |
 | `make run` | Build Release into `macos/build/Meetco.app` and launch it |
 | `make build` / `make -C macos debug` | Build only |
+| `make dmg` | Build Release and package `macos/build/Meetco-macOS.dmg` |
 | `make test` | Run the unit tests |
 | `make open` | Open the project in Xcode |
 | `make clean` | Remove build output |

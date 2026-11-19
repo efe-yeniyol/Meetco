@@ -1,7 +1,7 @@
 # Meetco — shortcuts for both apps. Run `make help` to list them.
 # The macOS app lives in macos/, the Windows app in windows/.
 
-.PHONY: help install run build test open clean windows-test windows-build check-secrets hooks
+.PHONY: help install run build dmg test open clean windows-test windows-build check-secrets hooks
 
 help:             ## List the available commands
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t 18
@@ -15,6 +15,9 @@ run:              ## macOS: build Release and launch
 
 build:            ## macOS: build Release into macos/build
 	$(MAKE) -C macos build
+
+dmg:              ## macOS: build Release and package macos/build/Meetco-macOS.dmg
+	$(MAKE) -C macos dmg
 
 test:             ## macOS: run unit tests
 	$(MAKE) -C macos test
