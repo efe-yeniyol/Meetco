@@ -57,8 +57,10 @@ dotnet run --project src/Meetco.App      # run the app (Windows only)
 
 ## Releases
 
-Pushing a tag like `v1.2.0` runs the **Release** workflow. It builds `Meetco-macOS.zip`,
-`Meetco-Windows-x64.zip` and `Meetco-Windows-arm64.zip` and attaches them to a GitHub release.
+Pushing a tag like `v1.2.0` runs the **Release** workflow. It builds `Meetco-macOS.dmg`
+(plus `Meetco-macOS.zip`), `Meetco-Windows-x64.zip` and `Meetco-Windows-arm64.zip`, stamps the tag
+as the app version, and attaches them with `SHA256SUMS.txt` to a GitHub release.
+`make dmg` builds the same DMG locally.
 The download links in the main README always point to the latest release.
 
 ## Reporting security problems

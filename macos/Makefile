@@ -1,4 +1,4 @@
-.PHONY: build debug run install test clean icon open
+.PHONY: build debug run install test clean icon open dmg
 
 build:            ## Build Meetco.app (Release) into ./build
 	scripts/build.sh Release
@@ -8,6 +8,10 @@ debug:            ## Build Meetco.app (Debug) into ./build
 
 run:              ## Build and launch Meetco
 	scripts/run.sh
+
+dmg:              ## Build Release and package build/Meetco-macOS.dmg
+	scripts/build.sh Release
+	scripts/make-dmg.sh
 
 install:          ## Build and install to /Applications
 	scripts/install.sh

@@ -41,6 +41,12 @@ else
   SIGN_ARGS=(CODE_SIGN_IDENTITY="$IDENTITY" CODE_SIGN_STYLE=Manual OTHER_CODE_SIGN_FLAGS=--timestamp=none)
 fi
 
+# Optional: stamp a release version, e.g. MEETCO_VERSION=1.2.0 (set by the release workflow).
+VERSION_ARGS=()
+if [[ -n "${MEETCO_VERSION:-}" ]]; then
+  VERSION_ARGS=(MARKETING_VERSION="${MEETCO_VERSION#v}")
+fi
+
 xcodebuild \
   -project Meetco.xcodeproj \
   -scheme Meetco \
@@ -48,6 +54,7 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA" \
   -destination "platform=macOS" \
   "${SIGN_ARGS[@]}" \
+  ${VERSION_ARGS[@]+"${VERSION_ARGS[@]}"} \
   build | (command -v xcpretty >/dev/null && xcpretty || grep -E "error:|warning:|BUILD" || true)
 
 rm -rf build/Meetco.app

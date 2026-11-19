@@ -21,22 +21,43 @@
 
 ## Download
 
+<p align="center">
+  <a href="https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.dmg"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-macOS%20(.dmg)-black?style=for-the-badge&logo=apple"></a>
+  &nbsp;
+  <a href="https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-Windows-x64.zip"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%20(x64)-0078D4?style=for-the-badge&logo=windows"></a>
+</p>
+
 | Platform | Download | Requirements |
 |---|---|---|
-| **macOS** (Apple silicon & Intel) | [**Meetco-macOS.zip**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.zip) | macOS 14 Sonoma or later |
+| **macOS** (Apple silicon & Intel) | [**Meetco-macOS.dmg**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.dmg) · [.zip](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-macOS.zip) | macOS 14 Sonoma or later |
 | **Windows** (most PCs) | [**Meetco-Windows-x64.zip**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-Windows-x64.zip) | Windows 10 (2004+) or 11 |
 | **Windows on ARM** (e.g. Snapdragon) | [**Meetco-Windows-arm64.zip**](https://github.com/efe-yeniyol/Meetco/releases/latest/download/Meetco-Windows-arm64.zip) | Windows 11 |
 
-All versions: **[Releases](https://github.com/efe-yeniyol/Meetco/releases)**. You also need an
+All versions and checksums: **[Releases](https://github.com/efe-yeniyol/Meetco/releases)**. You also need an
 **[OpenAI API key](https://platform.openai.com/api-keys)** with billing enabled (a ChatGPT Plus
-subscription does not include API access).
+subscription does not include API access), or a key for another [supported provider](#models).
+
+### Install
+
+**macOS**
+1. Open **Meetco-macOS.dmg** and drag **Meetco** onto the **Applications** folder.
+2. Open Meetco from Applications. macOS will say it can't verify the developer, because the app is not notarized yet.
+3. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only do this once.
+
+<details>
+<summary>Prefer the terminal?</summary>
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Meetco.app
+```
+</details>
+
+**Windows**
+1. Unzip **Meetco-Windows-x64.zip** (or arm64) anywhere, for example into `Documents\Meetco`.
+2. Run **Meetco.exe**. In the SmartScreen dialog, click **More info → Run anyway**.
 
 > **Windows is a preview.** It has the same features as the Mac app and passes its automated
 > tests, but it has not been tried in many real meetings yet. Feedback is very welcome.
-
-Builds are not notarized or code-signed yet, so the first launch needs one extra click:
-- **macOS:** open Meetco once, then **System Settings → Privacy & Security → Open Anyway**.
-- **Windows:** in the SmartScreen dialog, click **More info → Run anyway**.
 
 ## What is Meetco?
 
