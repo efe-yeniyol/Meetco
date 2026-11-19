@@ -39,6 +39,10 @@ jobs:
         with:
           global-json-file: windows/global.json
 
+      - name: Version without the v prefix
+        shell: bash
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
       - name: Test core
         if: matrix.rid == 'win-x64'
         working-directory: windows
@@ -54,7 +58,7 @@ jobs:
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:DebugType=none
-          -p:Version=${{ env.TAG }}
+          -p:Version=${{ env.VERSION }}
           --output publish/${{ matrix.rid }}
 
       - name: Zip
