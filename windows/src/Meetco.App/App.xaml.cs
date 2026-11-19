@@ -3,8 +3,10 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using Meetco.Core.Anthropic;
 using Meetco.Core.Assistant;
 using Meetco.Core.Infrastructure;
+using Meetco.Core.Models;
 using Meetco.Core.OpenAI;
 using Meetco.Core.Session;
 using Meetco.Core.Settings;
@@ -29,6 +31,11 @@ public partial class App : Application
     private AppSettings? _settings;
     private ApiKeyProvider? _keyProvider;
     private OpenAIClient? _client;
+    private ApiKeyRegistry? _keys;
+    private IReadOnlyDictionary<AssistantProvider, IModelLister>? _listers;
+    private WhisperModelStore? _whisperModels;
+    private WhisperTranscriptionService? _whisper;
+    private readonly List<IDisposable> _disposables = [];
     private MeetingSessionController? _session;
     private SessionArchive? _archive;
     private ShellViewModel? _shell;
@@ -103,21 +110,42 @@ public partial class App : Application
 
     private void BuildServices(string appData)
     {
+        var localData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Meetco");
         var settings = AppSettings.Load(Path.Combine(appData, "settings.json"));
         var keyProvider = new ApiKeyProvider(new CredentialManagerKeyStore());
+        var keys = new ApiKeyRegistry(keyProvider, provider => new CredentialManagerKeyStore(provider));
         var client = new OpenAIClient(keyProvider, () => settings.NetworkConfiguration);
+
+        // One client per assistant provider; everything but Anthropic speaks the OpenAI protocol.
+        var chatClients = new Dictionary<AssistantProvider, IOpenAIClient> { [AssistantProvider.OpenAI] = client };
+        var listers = new Dictionary<AssistantProvider, IModelLister> { [AssistantProvider.OpenAI] = client };
+        foreach (var provider in Enum.GetValues<AssistantProvider>().Where(p => p != AssistantProvider.OpenAI && p.Wire() == ChatWire.OpenAICompatible))
+        {
+            var providerClient = new OpenAIClient(keys.For(provider), () => settings.ConfigurationFor(provider), requiresApiKey: provider.RequiresApiKey());
+            _disposables.Add(providerClient);
+            chatClients[provider] = providerClient;
+            listers[provider] = providerClient;
+        }
+        var anthropic = new AnthropicClient(keys.For(AssistantProvider.Anthropic), () => settings.ConfigurationFor(AssistantProvider.Anthropic));
+        _disposables.Add(anthropic);
+        listers[AssistantProvider.Anthropic] = anthropic;
+
+        var whisperModels = new WhisperModelStore(Path.Combine(localData, "models"));
+        var whisper = new WhisperTranscriptionService(whisperModels, () => settings.WhisperModel);
         var transcript = new TranscriptStore();
         var liveTranscription = new LiveTranscriptionHub(keyProvider, () => settings.NetworkConfiguration);
         var transcription = new TranscriptionCoordinator(
-            new LiveFirstTranscriptionService(liveTranscription, new OpenAITranscriptionService(client)),
+            new TranscriptionRouter(
+                new LiveFirstTranscriptionService(liveTranscription, new OpenAITranscriptionService(client)),
+                whisper),
             transcript,
             settings);
         var suggestions = new SuggestionEngine(
-            new OpenAIMeetingAssistant(client),
+            new ProviderRoutingAssistant(chatClients, anthropic, settings.ConfigurationFor),
             new ScreenshotService(),
             transcript,
             settings,
-            keyProvider);
+            keys);
         var archive = new SessionArchive(Path.Combine(appData, "Sessions"));
         var session = new MeetingSessionController(
             settings,
@@ -128,12 +156,18 @@ public partial class App : Application
             suggestions,
             archive,
             liveTranscription,
-            client.WarmUpAsync,
-            new UiDispatcher(new DispatcherSynchronizationContext(Dispatcher)));
+            () => WarmUpAsync(client, listers, settings),
+            new UiDispatcher(new DispatcherSynchronizationContext(Dispatcher)),
+            // Loading the model reads a few hundred MB: keep it off the UI thread.
+            token => Task.Run(() => whisper.PrepareAsync(token), token));
 
         _settings = settings;
         _keyProvider = keyProvider;
         _client = client;
+        _keys = keys;
+        _listers = listers;
+        _whisperModels = whisperModels;
+        _whisper = whisper;
         _archive = archive;
         _session = session;
         _windowStore = new WindowStateStore(Path.Combine(appData, "window.json"));
@@ -189,7 +223,8 @@ public partial class App : Application
 
         shell.PropertyChanged += OnShellChanged;
 
-        if (!_keyProvider!.HasKey || !_settings!.HasCompletedOnboarding) ShowWelcome();
+        var canTranscribe = _settings!.TranscriptionProvider == TranscriptionProvider.OnDevice || _keyProvider!.HasKey;
+        if (!canTranscribe || !_settings.HasCompletedOnboarding) ShowWelcome();
     }
 
     // MARK: Actions
@@ -223,7 +258,31 @@ public partial class App : Application
 
     private SettingsViewModel CreateSettingsViewModel() =>
         new(_settings!, _keyProvider!, _client!, _archive!, _hotKeys!, Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Meetco", "logs", "meetco.log"));
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Meetco", "logs", "meetco.log"),
+            _keys!, _listers!, _whisperModels!);
+
+    /// <summary>Opens connections ahead of time so the first transcription and answer skip the TLS handshake.</summary>
+    private static async Task WarmUpAsync(OpenAIClient openAI, IReadOnlyDictionary<AssistantProvider, IModelLister> listers, AppSettings settings)
+    {
+        var transcription = settings.TranscriptionProvider == TranscriptionProvider.OpenAI ? openAI.WarmUpAsync() : Task.CompletedTask;
+        var provider = settings.AssistantProvider;
+        if (provider != AssistantProvider.OpenAI)
+        {
+            try
+            {
+                await listers[provider].ListModelsAsync(null, CancellationToken.None);
+            }
+            catch
+            {
+                // Best effort only.
+            }
+        }
+        else if (settings.TranscriptionProvider != TranscriptionProvider.OpenAI)
+        {
+            await openAI.WarmUpAsync();
+        }
+        await transcription;
+    }
 
     private void ShowSettings()
     {
@@ -275,6 +334,8 @@ public partial class App : Application
             _showWait?.Unregister(null);
             _showSignal?.Dispose();
             _client?.Dispose();
+            _whisper?.Dispose();
+            foreach (var disposable in _disposables) disposable.Dispose();
             Log.Info("app", "Meetco quit");
         }
         catch (Exception error)

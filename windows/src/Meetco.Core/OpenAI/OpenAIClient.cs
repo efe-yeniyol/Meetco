@@ -9,15 +9,19 @@ using Meetco.Core.Settings;
 
 namespace Meetco.Core.OpenAI;
 
+/// <summary>Lists the models an endpoint offers; used by Settings to test a key.</summary>
+public interface IModelLister
+{
+    Task<IReadOnlyList<string>> ListModelsAsync(string? apiKeyOverride, CancellationToken cancellationToken);
+}
+
 /// <summary>Abstraction over the OpenAI REST API so services can be tested with fakes.</summary>
-public interface IOpenAIClient
+public interface IOpenAIClient : IModelLister
 {
     /// <summary>Streams content deltas of a chat completion (server-sent events).</summary>
     IAsyncEnumerable<string> StreamChatCompletionAsync(ChatCompletionRequest request, CancellationToken cancellationToken);
 
     Task<TranscriptionResponse> CreateTranscriptionAsync(byte[] audio, string filename, TranscriptionOptions options, bool verbose, CancellationToken cancellationToken);
-
-    Task<IReadOnlyList<string>> ListModelsAsync(string? apiKeyOverride, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -33,13 +37,16 @@ public sealed class OpenAIClient : IOpenAIClient, IDisposable
     private readonly Func<OpenAIConfiguration> _configuration;
     private readonly RetryPolicy _retryPolicy;
     private readonly HttpClient _http;
+    private readonly bool _requiresApiKey;
 
     /// <summary>Longest silence tolerated in the middle of a streamed response.</summary>
     public TimeSpan StreamIdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
-    public OpenAIClient(ApiKeyProvider keyProvider, Func<OpenAIConfiguration> configuration, RetryPolicy? retryPolicy = null, HttpMessageHandler? handler = null)
+    /// <param name="requiresApiKey">False for local servers (Ollama, LM Studio) that accept requests without a key.</param>
+    public OpenAIClient(ApiKeyProvider keyProvider, Func<OpenAIConfiguration> configuration, RetryPolicy? retryPolicy = null, HttpMessageHandler? handler = null, bool requiresApiKey = true)
     {
         _keyProvider = keyProvider;
+        _requiresApiKey = requiresApiKey;
         _configuration = configuration;
         _retryPolicy = retryPolicy ?? new RetryPolicy();
         var socketsHandler = handler ?? new SocketsHttpHandler
@@ -110,7 +117,7 @@ public sealed class OpenAIClient : IOpenAIClient, IDisposable
     /// <summary>Opens a connection to the API host ahead of time so the first real request is faster.</summary>
     public async Task WarmUpAsync()
     {
-        if (!_keyProvider.HasKey) return;
+        if (!_keyProvider.HasKey && _requiresApiKey) return;
         try
         {
             await ListModelsAsync(null, CancellationToken.None).ConfigureAwait(false);
@@ -167,11 +174,11 @@ public sealed class OpenAIClient : IOpenAIClient, IDisposable
 
     private HttpRequestMessage MakeRequest(string path, HttpMethod method, HttpContent? content, string? apiKeyOverride)
     {
-        var apiKey = apiKeyOverride ?? _keyProvider.CurrentKey();
-        if (string.IsNullOrEmpty(apiKey)) throw OpenAIException.MissingApiKey();
+        var apiKey = (apiKeyOverride ?? _keyProvider.CurrentKey())?.Trim();
+        if (string.IsNullOrEmpty(apiKey) && _requiresApiKey) throw OpenAIException.MissingApiKey();
         var configuration = _configuration();
         var request = new HttpRequestMessage(method, configuration.Endpoint(path)) { Content = content };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        if (!string.IsNullOrEmpty(apiKey)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Options.Set(TimeoutKey, configuration.RequestTimeout);
         return request;
     }

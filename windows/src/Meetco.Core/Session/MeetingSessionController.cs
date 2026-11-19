@@ -24,6 +24,7 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
     private readonly SessionArchive? _archive;
     private readonly LiveTranscriptionHub? _liveTranscription;
     private readonly Func<Task>? _warmUp;
+    private readonly Func<CancellationToken, Task>? _prepareOnDevice;
     private readonly UiDispatcher _dispatcher;
 
     private readonly Dictionary<AudioSourceKind, IAudioCapture> _captures = [];
@@ -53,8 +54,10 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
         SessionArchive? archive = null,
         LiveTranscriptionHub? liveTranscription = null,
         Func<Task>? warmUp = null,
-        UiDispatcher? dispatcher = null)
+        UiDispatcher? dispatcher = null,
+        Func<CancellationToken, Task>? prepareOnDevice = null)
     {
+        _prepareOnDevice = prepareOnDevice;
         _settings = settings;
         _captureFactory = captureFactory;
         _keyProvider = keyProvider;
@@ -182,12 +185,28 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
     {
         ErrorMessage = null;
         WarningMessage = null;
-        if (!_keyProvider.HasKey)
+        if (_settings.TranscriptionProvider == TranscriptionProvider.OpenAI && !_keyProvider.HasKey)
         {
-            ErrorMessage = "Add your OpenAI API key in Settings before you start listening.";
+            ErrorMessage = "Add your OpenAI API key in Settings, or choose on-device transcription in Settings → Audio, before you start listening.";
             return;
         }
         State = SessionState.Starting;
+        if (_settings.TranscriptionProvider == TranscriptionProvider.OnDevice && _prepareOnDevice is { } prepare)
+        {
+            // Loads the speech model now so the first utterance doesn't wait for it.
+            try
+            {
+                await prepare(CancellationToken.None);
+            }
+            catch (Exception error)
+            {
+                ErrorMessage = error.Message;
+                State = SessionState.Idle;
+                return;
+            }
+        }
+        // Stopped while the model was loading.
+        if (State != SessionState.Starting) return;
         // Open the HTTPS connection now so the first transcription/answer doesn't pay for the TLS handshake.
         if (_warmUp is { } warmUp) _ = Task.Run(warmUp);
 
@@ -338,7 +357,7 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
 
         // With a live model the audio is streamed while it is spoken; chunks only mark utterance ends.
         ILiveAudioSink? liveSink = null;
-        if (ModelCatalog.IsLiveTranscriptionModel(_settings.TranscriptionModel))
+        if (_settings.TranscriptionProvider == TranscriptionProvider.OpenAI && ModelCatalog.IsLiveTranscriptionModel(_settings.TranscriptionModel))
         {
             liveSink = _liveTranscription?.Open(source, _settings.TranscriptionModel, _settings.TranscriptionLanguage.IsoCode());
         }

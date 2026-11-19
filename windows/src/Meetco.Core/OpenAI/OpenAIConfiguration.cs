@@ -8,6 +8,11 @@ public sealed record OpenAIConfiguration(Uri BaseUrl, TimeSpan RequestTimeout)
     public static OpenAIConfiguration From(string? rawBaseUrl) =>
         new(ValidatedBaseUrl(rawBaseUrl ?? "") ?? DefaultBaseUrl, TimeSpan.FromSeconds(60));
 
+    /// <summary>Configuration of an assistant provider. Local models can take a while to load on the first request.</summary>
+    public static OpenAIConfiguration For(Models.AssistantProvider provider, string? rawBaseUrl) =>
+        new(ValidatedBaseUrl(rawBaseUrl ?? "") ?? Models.AssistantProviderInfo.DefaultBaseUrl(provider),
+            TimeSpan.FromSeconds(Models.AssistantProviderInfo.IsLocal(provider) ? 120 : 60));
+
     public static Uri? ValidatedBaseUrl(string raw)
     {
         raw = raw.Trim();

@@ -10,9 +10,12 @@ public static class PromptBuilder
 {
     // MARK: Messages
 
-    public static List<ChatMessage> Messages(AssistantRequest request)
+    /// <param name="inlineSchema">Describe the JSON schema in the prompt, for endpoints without strict structured output.</param>
+    public static List<ChatMessage> Messages(AssistantRequest request, bool inlineSchema = false)
     {
-        var system = ChatMessage.System(SystemPrompt(request));
+        var systemText = SystemPrompt(request);
+        if (inlineSchema && SchemaInstructions(request.Kind) is { } schema) systemText += "\n" + schema;
+        var system = ChatMessage.System(systemText);
         var userText = UserPrompt(request);
         if (request.ScreenContext is { } screen)
         {
@@ -161,6 +164,12 @@ public static class PromptBuilder
         preferences.ExplanationLanguage.LanguageName() ?? preferences.ResponseLanguage.LanguageName() ?? "the main language of the meeting";
 
     // MARK: Schemas
+
+    /// <summary>The schema spelled out in the prompt. Null for spoken answers, which are plain text.</summary>
+    public static string? SchemaInstructions(SuggestionKind kind) => kind.IsSpoken()
+        ? null
+        : "- Output only the JSON object: no markdown, no code fences, no text before or after it. Include every property, in this order, as described by this JSON Schema:\n"
+          + Schema(kind).ToJsonString(Json.Options);
 
     public static string SchemaName(SuggestionKind kind) => kind switch
     {

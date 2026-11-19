@@ -57,7 +57,8 @@ public sealed class TranscriptionCoordinator : ObservableObject
         var options = new TranscriptionOptions(
             _settings.TranscriptionModel,
             _settings.TranscriptionLanguage.IsoCode(),
-            _store.RecentText(chunk.Source, 200));
+            _store.RecentText(chunk.Source, 200),
+            _settings.TranscriptionProvider);
         InFlightCount += 1;
         Log.Debug("transcription", $"Transcribing {chunk.Source} chunk #{chunk.Sequence} ({chunk.Duration:0.0}s)");
         try

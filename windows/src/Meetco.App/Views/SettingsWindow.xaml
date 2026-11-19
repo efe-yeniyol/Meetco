@@ -43,15 +43,48 @@
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Your key is stored only in Windows Credential Manager. Meetco has no account or server; every request goes from this PC straight to OpenAI with your key. Create a key at platform.openai.com/api-keys (API billing must be enabled)." />
 
-                    <TextBlock Text="Answer model" Style="{StaticResource Label}" />
-                    <ComboBox IsEditable="True" ItemsSource="{Binding AssistantModels}"
-                              Text="{Binding Settings.ChatModel, UpdateSourceTrigger=LostFocus}" />
-                    <TextBlock Text="{Binding AssistantModelNotes}" Style="{StaticResource Hint}" />
-
                     <TextBlock Text="Transcription model" Style="{StaticResource Label}" />
                     <ComboBox IsEditable="True" ItemsSource="{Binding TranscriptionModels}"
                               Text="{Binding Settings.TranscriptionModel, UpdateSourceTrigger=LostFocus}" />
                     <TextBlock Text="{Binding TranscriptionModelNotes}" Style="{StaticResource Hint}" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Used when the Audio tab transcribes with OpenAI. Choose who writes the answers in the Assistant tab." />
+
+                    <TextBlock Text="API base URL" Style="{StaticResource Label}" />
+                    <TextBox Text="{Binding Settings.ApiBaseUrl, UpdateSourceTrigger=LostFocus}" Padding="4" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Leave as https://api.openai.com/v1 unless you use a compatible proxy. To use another AI provider for answers, see the Assistant tab." />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <!-- Assistant -->
+        <TabItem Header="Assistant">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="14,6,14,14">
+                    <TextBlock Text="Assistant provider" Style="{StaticResource Label}" />
+                    <ComboBox ItemsSource="{Binding AssistantProviders}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                              SelectedValue="{Binding Settings.AssistantProvider}" />
+                    <TextBlock Text="{Binding ProviderHint}" Style="{StaticResource Hint}" />
+
+                    <StackPanel Visibility="{Binding ProviderUsesOwnKey, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding ProviderKeyLabel}" Style="{StaticResource Label}" />
+                        <PasswordBox x:Name="ProviderKeyBox" Padding="4" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Save API Key" Click="OnSaveProviderKey" />
+                            <Button Content="Test Connection" Click="OnTestProvider" IsEnabled="{Binding IsTestingProvider, Converter={StaticResource InvertBool}}" />
+                            <Button Content="Delete Key" Click="OnDeleteProviderKey" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ProviderKeyStatus}" Style="{StaticResource Hint}" />
+                        <TextBlock Text="{Binding ProviderTestResult}" Style="{StaticResource Hint}" Foreground="#FF0A64C8" />
+
+                        <TextBlock Text="Address" Style="{StaticResource Label}" />
+                        <TextBox Text="{Binding Settings.AssistantBaseUrl, UpdateSourceTrigger=LostFocus}" Padding="4" />
+                        <TextBlock Text="{Binding BaseUrlHint}" Style="{StaticResource Hint}" />
+                    </StackPanel>
+
+                    <TextBlock Text="Answer model" Style="{StaticResource Label}" />
+                    <ComboBox IsEditable="True" ItemsSource="{Binding ProviderModelOptions}"
+                              Text="{Binding Settings.AssistantModel, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Text="{Binding ProviderModelNotes}" Style="{StaticResource Hint}" />
 
                     <TextBlock Text="About you" Style="{StaticResource Label}" />
                     <TextBox Text="{Binding Settings.UserContext, UpdateSourceTrigger=PropertyChanged, Delay=500}" AcceptsReturn="True"
@@ -73,9 +106,6 @@
 
                     <CheckBox Content="Answer questions automatically" IsChecked="{Binding Settings.AutoSuggest}" />
 
-                    <TextBlock Text="API base URL" Style="{StaticResource Label}" />
-                    <TextBox Text="{Binding Settings.ApiBaseUrl, UpdateSourceTrigger=LostFocus}" Padding="4" />
-                    <TextBlock Style="{StaticResource Hint}" Text="Leave as https://api.openai.com/v1 unless you use a compatible proxy." />
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
@@ -102,6 +132,26 @@
                     <TextBlock Text="Response speed" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding LatencyProfiles}" DisplayMemberPath="Title" SelectedValuePath="Value"
                               SelectedValue="{Binding Settings.LatencyProfile}" />
+
+                    <TextBlock Text="Transcribe with" Style="{StaticResource Label}" />
+                    <ComboBox ItemsSource="{Binding TranscriptionProviders}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                              SelectedValue="{Binding Settings.TranscriptionProvider}" />
+                    <StackPanel Visibility="{Binding UsesOnDeviceTranscription, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="On-device model" Style="{StaticResource Label}" />
+                        <ComboBox ItemsSource="{Binding WhisperModelOptions}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                                  SelectedValue="{Binding Settings.WhisperModel}" IsEnabled="{Binding IsDownloading, Converter={StaticResource InvertBool}}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Download model" Click="OnDownloadWhisper"
+                                    Visibility="{Binding CanDownloadWhisper, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Content="Cancel" Click="OnCancelDownload"
+                                    Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <ProgressBar Height="6" Margin="0,8,0,0" Maximum="100" Value="{Binding DownloadProgress, Mode=OneWay}"
+                                     Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Text="{Binding WhisperStatus}" Style="{StaticResource Hint}" />
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Whisper runs on your CPU. If answers lag behind on an older PC, choose the Fast model. Models come from the whisper.cpp project on Hugging Face and are checked after download." />
+                    </StackPanel>
 
                     <TextBlock Text="Transcription language" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding TranscriptionLanguages}" DisplayMemberPath="Title" SelectedValuePath="Value"
@@ -156,7 +206,7 @@
 
                     <TextBlock Text="What leaves your PC" Style="{StaticResource Label}" />
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Speech (never silence) is sent to OpenAI for transcription, and the recent transcript plus your About you notes are sent to generate answers. Screenshots are sent only when you attach one. Nothing goes to any Meetco server; there is none." />
+                               Text="Speech (never silence) is sent to OpenAI for transcription, unless you transcribe on this PC (Audio tab). The recent transcript plus your About you notes are sent to the assistant provider you choose (Assistant tab) to generate answers; with Ollama or LM Studio they stay on this PC. Screenshots are sent only when you attach one. Nothing goes to any Meetco server; there is none." />
 
                     <TextBlock Text="Responsible use" Style="{StaticResource Label}" />
                     <TextBlock Style="{StaticResource Hint}"
