@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Meetco.Core.Models;
 using Meetco.Core.OpenAI;
@@ -35,6 +36,7 @@ public static class PromptBuilder
 
     public static string SystemPrompt(AssistantRequest request)
     {
+        if (request.Kind == SuggestionKind.Memory) return MemorySystemPrompt;
         var preferences = request.Preferences;
         var shared = $"""
             You are Meetco, a real-time meeting copilot that sits beside the user during a live call.
@@ -47,7 +49,9 @@ public static class PromptBuilder
 
             Rules:
             - Use your own knowledge freely for anything that is general knowledge: how things work, definitions, recipes, techniques, technical concepts, best practices, well-known facts. Give the real content with concrete specifics (ingredients and typical amounts, steps, names, numbers that are commonly known).
-            - Never invent facts about the user or their business: their personal history, employers, prices, dates, commitments, internal numbers or product capabilities must come from the transcript or the user's notes. Only when an answer truly depends on such private details, give an honest answer that offers to confirm or follow up.
+            - Never invent facts about the user or their business: their personal history, employers, prices, dates, commitments, internal numbers or product capabilities must come from the transcript, the meeting memory or the user's notes. Only when an answer truly depends on such private details, give an honest answer that offers to confirm or follow up.
+            - What was said in this meeting is the ground truth for this meeting. When a question touches something already discussed (numbers, dates, decisions, names, requirements, or what the user said earlier), build on it, reuse those specifics and stay consistent with it. Never contradict what the user already said.
+            - People: the "People in this meeting" list says who is present, as far as the conversation revealed it. Use it to understand who is probably asking (from names, roles and context) and tailor the answer to them: technical depth for engineers, business impact for managers and buyers. You may address someone by name when it is natural, at most once. Never guess a name or role that is not in the list or the transcript.
             - Style: {preferences.Style.PromptDescription()}
             - Language: {LanguageRule(preferences.ResponseLanguage)}
             """;
@@ -88,8 +92,10 @@ public static class PromptBuilder
     {
         var sections = new List<string>();
         var context = request.Preferences.UserContext.Trim();
+        if (request.Kind == SuggestionKind.Memory) return MemoryUserPrompt(request);
         sections.Add("## About the user\n" + (context.Length == 0 ? "No additional information provided." : context));
         sections.Add("## Meeting topic so far\n" + (string.IsNullOrEmpty(request.MeetingTopic) ? "Not identified yet." : request.MeetingTopic));
+        if (request.Memory is { IsEmpty: false } memory) sections.AddRange(MemorySections(memory));
         sections.Add("## Transcript (oldest first)\n" + FormattedTranscript(request.Transcript));
         if (request.PreviousAnswers.Count > 0)
         {
@@ -147,6 +153,65 @@ public static class PromptBuilder
         }
     }
 
+    // MARK: Meeting memory
+
+    /// <summary>People, facts and summary as prompt sections for answer, recap and question requests.</summary>
+    public static List<string> MemorySections(MeetingMemory memory)
+    {
+        var sections = new List<string>();
+        var people = new List<string>();
+        if (memory.UserName is { } user) people.Add($"- {user} (the user, the \"You\" lines)");
+        foreach (var person in memory.Participants)
+        {
+            var line = "- " + person.Name;
+            if (person.Detail is { } detail) line += " — " + detail;
+            if (!string.IsNullOrEmpty(person.Notes)) line += ". " + person.Notes;
+            people.Add(line);
+        }
+        if (people.Count > 0) sections.Add("## People in this meeting\n" + string.Join("\n", people));
+        var earlier = new List<string>();
+        if (memory.Summary.Length > 0) earlier.Add(memory.Summary);
+        if (memory.Facts.Count > 0) earlier.Add("Key facts:\n" + string.Join("\n", memory.Facts.Select(f => "- " + f)));
+        if (earlier.Count > 0) sections.Add("## Earlier in this meeting (memory)\n" + string.Join("\n\n", earlier));
+        return sections;
+    }
+
+    public const string MemorySystemPrompt = """
+        You are the note-taker of Meetco, a real-time meeting copilot. You keep a compact memory of a live meeting from its automatically generated transcript, so that answers later in the meeting can use who is present and what was said.
+
+        Transcript conventions:
+        - "Participant" lines are other people in the meeting (captured from the computer's audio output). Several people can share this label.
+        - "You" lines are the user's own microphone.
+        - Speech recognition can contain mistakes, especially in names; infer the intended meaning sensibly.
+
+        Rules:
+        - Only record what the transcript actually says. Never guess names, roles or facts.
+        - People: add everyone who introduces themselves or is named or addressed ("Thanks, Ayşe", "our CTO Mark will…"). Record role and organization only when stated or obvious from what they said. If a participant clearly has a role but no name was said, use a short description as the name ("Customer's CTO") and replace it with the real name once it is said. Do not list the user there; put the user's own name, if said, in user_name.
+        - In notes, keep one short line per person: what they care about, asked or are responsible for.
+        - Facts: things that later answers must stay consistent with: numbers, prices, dates, deadlines, requirements, decisions, commitments, problems raised and what the user already answered. Say who said it ("Ayşe: budget is €50k for Q3"). One short line each, most important last. Merge duplicates and update facts that changed.
+        - Summary: what the meeting is about and where the conversation is now, under 120 words.
+        - Keep everything from the existing memory that is still true, and write everything in the language of the meeting.
+        - Always respond with a single JSON object that matches the requested schema.
+        """;
+
+    private static readonly JsonSerializerOptions MemoryJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private static string MemoryUserPrompt(AssistantRequest request)
+    {
+        var sections = new List<string>();
+        var context = request.Preferences.UserContext.Trim();
+        if (context.Length > 0) sections.Add("## About the user (do not copy into the memory)\n" + context);
+        sections.Add(request.Memory is { IsEmpty: false } existing
+            ? "## Existing memory\n" + JsonSerializer.Serialize(existing, MemoryJson)
+            : "## Existing memory\nEmpty: this is the start of the meeting.");
+        sections.Add("## New transcript lines (oldest first)\n" + FormattedTranscript(request.Transcript));
+        sections.Add($"""
+            ## Task
+            Return the updated meeting memory: the existing memory merged with what the new lines reveal. At most {MeetingMemory.MaxParticipants} people and {MeetingMemory.MaxFacts} facts.
+            """);
+        return string.Join("\n\n", sections);
+    }
+
     private static string LanguageRule(ResponseLanguage language) => language.LanguageName() is { } name
         ? $"Always write suggested answers in {name}."
         : "Write the suggested answer in the language the Participant used for the question. If the conversation switches languages, follow the most recent Participant language.";
@@ -175,6 +240,7 @@ public static class PromptBuilder
     {
         SuggestionKind.Recap => "meeting_recap",
         SuggestionKind.QuestionsToAsk => "meeting_questions",
+        SuggestionKind.Memory => "meeting_memory",
         _ => "meeting_answer",
     };
 
@@ -189,6 +255,20 @@ public static class PromptBuilder
             ("action_items", StringArray()),
             ("open_questions", StringArray()),
             ("language", Type("string")),
+            ("meeting_topic", Type("string"))),
+        SuggestionKind.Memory => StrictObject(
+            ("user_name", Type("string", "The user's own name if said in the meeting, otherwise empty.")),
+            ("participants", new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = StrictObject(
+                    ("name", Type("string")),
+                    ("role", Type("string", "Job title or role in the meeting, or empty.")),
+                    ("organization", Type("string", "Company or team, or empty.")),
+                    ("notes", Type("string", "One short line, or empty."))),
+            }),
+            ("facts", StringArray()),
+            ("summary", Type("string")),
             ("meeting_topic", Type("string"))),
         SuggestionKind.QuestionsToAsk => StrictObject(
             ("questions", new JsonObject

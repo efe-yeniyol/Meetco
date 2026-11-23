@@ -55,6 +55,7 @@ public sealed class AppSettings : ObservableObject
     private string _userContext = "";
     private bool _autoSuggest = true;
     private bool _detectQuestionsInAnyLanguage = true;
+    private bool _meetingMemoryEnabled = true;
 
     // Assistant provider
     private AssistantProvider _assistantProvider = AssistantProvider.OpenAI;
@@ -93,6 +94,9 @@ public sealed class AppSettings : ObservableObject
 
     /// <summary>Lets the assistant model decide whether phrases the local detector missed are questions (any language).</summary>
     public bool DetectQuestionsInAnyLanguage { get => _detectQuestionsInAnyLanguage; set => Set(ref _detectQuestionsInAnyLanguage, value); }
+
+    /// <summary>Tracks people (names, roles) and what was said, and uses it in every answer.</summary>
+    public bool MeetingMemoryEnabled { get => _meetingMemoryEnabled; set => Set(ref _meetingMemoryEnabled, value); }
 
     public AssistantProvider AssistantProvider
     {

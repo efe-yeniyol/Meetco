@@ -60,7 +60,7 @@ struct OpenAIMeetingAssistant: MeetingAssisting {
         case (false, .jsonSchema):
             responseFormat = .jsonSchema(name: PromptBuilder.schemaName(for: request.kind), schema: PromptBuilder.schema(for: request.kind))
         }
-        let tokenLimit = isReasoning ? 4000 : (request.kind == .recap ? 900 : 600)
+        let tokenLimit = isReasoning ? 4000 : (request.kind == .memory ? 1500 : (request.kind == .recap ? 900 : 600))
         return ChatCompletionRequest(
             model: request.model,
             messages: PromptBuilder.messages(

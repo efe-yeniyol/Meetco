@@ -41,6 +41,12 @@ it decides whether they need an answer. These requests contain the same transcri
 other answer request; there is simply more of them. Turn the setting off to send requests only for
 recognised questions and for actions you trigger.
 
+With **Meeting memory** (Settings → Assistant, on by default), Meetco sends the new transcript lines
+to your assistant provider about every 30 seconds of conversation to update a short memory of the
+meeting (people's names and roles as they were said, key facts, a summary). The memory stays in
+memory only; it is written to disk only inside a saved transcript, when you enabled saving
+transcripts. It is cleared when a new session starts.
+
 ## What stays on your computer
 
 | | macOS | Windows |

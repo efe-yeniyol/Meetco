@@ -17,6 +17,7 @@ struct SuggestionContentView: View {
             case .answer, .whatToSay: answerBody
             case .recap: recapBody
             case .questionsToAsk: questionsBody
+            case .memory: EmptyView()
             }
             footer
         }

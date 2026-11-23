@@ -48,6 +48,9 @@ public sealed class SuggestionEngine : ObservableObject
     private readonly ApiKeyRegistry _keys;
     private readonly Func<DateTimeOffset> _now;
 
+    /// <summary>Who is in the meeting and what was said; sent with every request when enabled.</summary>
+    public MeetingMemoryEngine? Memory { get; }
+
     private CancellationTokenSource? _automatic;
     private readonly Dictionary<SuggestionKind, CancellationTokenSource> _manual = [];
     private CancellationTokenSource? _debounce;
@@ -73,8 +76,11 @@ public sealed class SuggestionEngine : ObservableObject
         TranscriptStore transcript,
         AppSettings settings,
         ApiKeyRegistry keys,
-        Func<DateTimeOffset>? now = null)
+        Func<DateTimeOffset>? now = null,
+        MeetingMemoryEngine? memory = null)
     {
+        Memory = memory;
+        if (memory is not null) memory.OnTopic = topic => MeetingTopic = topic;
         _assistant = assistant;
         _screenCapture = screenCapture;
         _transcript = transcript;
@@ -186,7 +192,9 @@ public sealed class SuggestionEngine : ObservableObject
 
     public void HandleNewSegment(TranscriptSegment segment, AudioCaptureMode captureMode)
     {
-        if (!_settings.AutoSuggest || AssistantUnavailableReason is not null) return;
+        if (AssistantUnavailableReason is not null) return;
+        Memory?.SegmentAdded();
+        if (!_settings.AutoSuggest) return;
         // Questions come from other participants; in mic-only mode (in-person) everyone is on the mic.
         var isFromOthers = segment.Source == AudioSourceKind.System || captureMode == AudioCaptureMode.MicrophoneOnly;
         if (!isFromOthers) return;
@@ -364,6 +372,7 @@ public sealed class SuggestionEngine : ObservableObject
         SelectedSuggestionId = null;
         MeetingTopic = null;
         LastError = null;
+        Memory?.Reset();
         NotifyGenerating();
         NotifyDisplay();
     }
@@ -404,6 +413,7 @@ public sealed class SuggestionEngine : ObservableObject
             Provider = _settings.AssistantProvider,
             ScreenContext = PendingScreenContext,
             PreviousAnswers = PreviousAnswers(replacing),
+            Memory = Memory?.Current,
         };
         var requestId = Guid.NewGuid();
         if (probe is null)

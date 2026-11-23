@@ -29,6 +29,10 @@ struct SidebarView: View {
                     }
                 }
 
+                if settings.meetingMemoryEnabled {
+                    meetingMemory
+                }
+
                 section("Detected questions", empty: "Questions from participants appear here.", items: detectedQuestions) { segment in
                     SidebarTextRow(text: segment.text, systemImage: "questionmark.circle", help: "Generate an answer") {
                         appState.selectedTab = .answers
@@ -69,6 +73,31 @@ struct SidebarView: View {
             .filter { $0.isQuestion && ($0.source == .system || microphoneOnly) }
             .suffix(8)
             .reversed()
+    }
+
+    /// People and key facts gathered from the conversation.
+    @ViewBuilder
+    private var meetingMemory: some View {
+        let memory = suggestions.memory?.memory ?? MeetingMemory()
+        VStack(alignment: .leading, spacing: 2) {
+            SectionHeader(title: "People", trailing: memory.participants.isEmpty ? nil : "\(memory.participants.count)")
+                .padding(.bottom, 4)
+            if memory.participants.isEmpty {
+                Text(suggestions.memory?.isUpdating == true ? "Listening for names and roles…" : "Names and roles appear here as people introduce themselves.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
+            } else {
+                ForEach(memory.participants) { PersonRow(person: $0) }
+            }
+        }
+        if !memory.facts.isEmpty {
+            section("Key points", empty: "", items: memory.facts.reversed().prefix(8).map { MemoryFact(text: $0) }) { fact in
+                SidebarTextRow(text: fact.text, systemImage: "pin", help: "Copy") {
+                    Clipboard.copy(fact.text)
+                }
+            }
+        }
     }
 
     private var brand: some View {
@@ -178,5 +207,39 @@ struct SidebarTextRow: View {
         .buttonStyle(.plain)
         .help(help)
         .onHover { isHovering = $0 }
+    }
+}
+
+private struct MemoryFact: Identifiable {
+    let text: String
+    var id: String { text }
+}
+
+/// A participant: name, then role and organization.
+struct PersonRow: View {
+    let person: MeetingParticipant
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "person.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(person.name)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .lineLimit(1)
+                if let detail = person.detail {
+                    Text(detail)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .help([person.detail, person.notes].compactMap { $0 }.joined(separator: "\n"))
     }
 }

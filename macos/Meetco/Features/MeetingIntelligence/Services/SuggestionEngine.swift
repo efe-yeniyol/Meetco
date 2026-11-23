@@ -50,6 +50,8 @@ final class SuggestionEngine {
     @ObservationIgnored private let transcript: TranscriptStore
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let keys: APIKeyRegistry
+    /// Who is in the meeting and what was said; sent with every request when enabled.
+    @ObservationIgnored let memory: MeetingMemoryEngine?
 
     @ObservationIgnored private var automaticTask: Task<Void, Never>?
     @ObservationIgnored private var manualTasks: [Suggestion.Kind: Task<Void, Never>] = [:]
@@ -69,13 +71,16 @@ final class SuggestionEngine {
         screenCapture: any ScreenContextCapturing,
         transcript: TranscriptStore,
         settings: SettingsStore,
-        keys: APIKeyRegistry
+        keys: APIKeyRegistry,
+        memory: MeetingMemoryEngine? = nil
     ) {
         self.assistant = assistant
         self.screenCapture = screenCapture
         self.transcript = transcript
         self.settings = settings
         self.keys = keys
+        self.memory = memory
+        memory?.onTopic = { [weak self] topic in self?.meetingTopic = topic }
     }
 
     // MARK: Derived state
@@ -135,7 +140,9 @@ final class SuggestionEngine {
     // MARK: Automatic triggering
 
     func handleNewSegment(_ segment: TranscriptSegment, captureMode: AudioCaptureMode) {
-        guard settings.autoSuggest, assistantUnavailableReason == nil else { return }
+        guard assistantUnavailableReason == nil else { return }
+        memory?.segmentAdded()
+        guard settings.autoSuggest else { return }
         // Questions come from other participants; in mic-only mode (in-person) everyone is on the mic.
         let isFromOthers = segment.source == .system || captureMode == .microphoneOnly
         guard isFromOthers else { return }
@@ -309,6 +316,7 @@ final class SuggestionEngine {
         selectedSuggestionID = nil
         meetingTopic = nil
         lastError = nil
+        memory?.reset()
     }
 
     func restore(suggestions: [Suggestion], topic: String?) {
@@ -348,7 +356,8 @@ final class SuggestionEngine {
             model: settings.assistantModel,
             screenContext: pendingScreenContext,
             previousAnswers: previousAnswers(excluding: replacing),
-            provider: settings.assistantProvider
+            provider: settings.assistantProvider,
+            memory: memory?.current
         )
         let usedScreen = request.screenContext != nil
         Log.assistant.info("Requesting \(kind.rawValue, privacy: .public) (automatic: \(automatic), probe: \(probe != nil))")

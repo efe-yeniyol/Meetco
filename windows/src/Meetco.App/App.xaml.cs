@@ -141,12 +141,14 @@ public partial class App : Application
                 whisper),
             transcript,
             settings);
+        var assistant = new ProviderRoutingAssistant(chatClients, anthropic, settings.ConfigurationFor);
         var suggestions = new SuggestionEngine(
-            new ProviderRoutingAssistant(chatClients, anthropic, settings.ConfigurationFor),
+            assistant,
             new ScreenshotService(),
             transcript,
             settings,
-            keys);
+            keys,
+            memory: new MeetingMemoryEngine(assistant, transcript, settings));
         var archive = new SessionArchive(Path.Combine(appData, "Sessions"));
         var session = new MeetingSessionController(
             settings,

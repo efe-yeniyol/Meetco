@@ -62,7 +62,7 @@ struct PanelHeader: View {
             Spacer(minLength: 8)
 
             if !appState.isCompact {
-                IconButton(systemName: "sidebar.left", help: "Tools: recap, questions to ask, history", isActive: appState.showsSidebar, size: 24) {
+                IconButton(systemName: "sidebar.left", help: "Tools: people, recap, questions to ask, history", isActive: appState.showsSidebar, size: 24) {
                     appState.showsSidebar.toggle()
                 }
             }

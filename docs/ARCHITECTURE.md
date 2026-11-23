@@ -51,6 +51,21 @@ Question detection has two layers:
    already being written, and a newer probe replaces an unconfirmed one. Once confirmed it behaves
    like a detected question (continuations, de-duplication).
 
+## Meeting memory
+
+`MeetingMemoryEngine` keeps a `MeetingMemory` for the current meeting: the participants (name, role,
+organization, one line of notes), the user's own name if said, up to 30 key facts ("who said what":
+numbers, decisions, commitments) and a short summary. After about 350 new transcript characters
+(120 for the first update, or 45 s at most) it sends the existing memory plus only the new lines as a
+`.memory` request (strict JSON schema `meeting_memory`) and replaces the memory with the merged
+result. Updates run beside answers and never cancel them; a failed update waits 30 s before retrying.
+
+Every other request carries the memory (`AssistantRequest.memory`), rendered as "People in this
+meeting" and "Earlier in this meeting" sections. The system prompt treats what was said in the
+meeting as ground truth and asks the model to tailor answers to the probable asker without guessing
+names. The transcript still labels speakers only "Participant" / "You": names come from what people
+say, not from voice recognition.
+
 ## Where things live
 
 | Concern | macOS (`macos/Meetco/`) | Windows (`windows/src/`) |
@@ -63,6 +78,7 @@ Question detection has two layers:
 | Question detection | `Features/MeetingIntelligence/Services/QuestionDetector.swift` | `Meetco.Core/Text/QuestionDetector.cs` |
 | Prompts and schemas | `Features/MeetingIntelligence/Services/PromptBuilder.swift` | `Meetco.Core/Assistant/PromptBuilder.cs` |
 | Answer parsing | `ResponseParser.swift`, `AssistantModels.swift` | `Meetco.Core/Assistant/ResponseParser.cs`, `AssistantModels.cs` |
+| Meeting memory | `Features/MeetingIntelligence/Services/MeetingMemoryEngine.swift`, `Core/Models/MeetingMemory.swift` | `Meetco.Core/Session/MeetingMemoryEngine.cs`, `Meetco.Core/Models/MeetingMemory.cs` |
 | Suggestion engine | `Features/MeetingIntelligence/Services/SuggestionEngine.swift` | `Meetco.Core/Session/SuggestionEngine.cs` |
 | Session lifecycle | `Features/Session/Services/MeetingSessionController.swift` | `Meetco.Core/Session/MeetingSessionController.cs` |
 | OpenAI client | `Infrastructure/OpenAI/OpenAIClient.swift` (URLSession) | `Meetco.Core/OpenAI/OpenAIClient.cs` (HttpClient) |
@@ -91,6 +107,7 @@ app, change the other in the same pull request:
 - prompt text, JSON schemas and the plain-text answer format (`PromptBuilder`, `PlainAnswer`)
 - question detection word lists, question marks and thresholds (`QuestionDetector`)
 - the language catalog (`SpokenLanguage`) and the probe rules in `SuggestionEngine`
+- the meeting memory prompt, schema and update thresholds (`MeetingMemoryEngine`)
 - voice activity and latency settings (`AudioChunkerConfiguration`, `LatencyProfile`)
 - suggestion timing (`SuggestionEngine` debounce, continuation and duplicate thresholds)
 - the model catalog and reasoning-effort rules (`ModelCatalog`)

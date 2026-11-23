@@ -42,6 +42,17 @@ enum ResponseParser {
                 return nil
             }
             if output.items.isEmpty { throw AssistantError.invalidResponse("no questions") }
+        case .memory:
+            let people = (json["participants"] as? [Any] ?? []).compactMap { entry -> MeetingParticipant? in
+                guard let object = entry as? [String: Any], let name = string(object["name"]) else { return nil }
+                return MeetingParticipant(name: name, role: string(object["role"]), organization: string(object["organization"]), notes: string(object["notes"]))
+            }
+            output.memory = MeetingMemory(
+                userName: string(json["user_name"]),
+                participants: people,
+                facts: strings(json["facts"]),
+                summary: string(json["summary"]) ?? ""
+            ).trimmed()
         }
         return output
     }

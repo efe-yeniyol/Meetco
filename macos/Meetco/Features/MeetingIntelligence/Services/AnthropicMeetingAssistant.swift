@@ -37,7 +37,7 @@ struct AnthropicMeetingAssistant: MeetingAssisting {
         AnthropicMessageRequest(
             model: request.model,
             chatMessages: PromptBuilder.messages(for: request, inlineSchema: true),
-            maxTokens: request.kind == .recap ? 1200 : 800,
+            maxTokens: request.kind == .memory ? 1500 : (request.kind == .recap ? 1200 : 800),
             temperature: temperature
         )
     }

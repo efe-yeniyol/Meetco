@@ -244,7 +244,8 @@ final class MeetingSessionController {
             endedAt: Date(),
             meetingTopic: suggestions.meetingTopic,
             segments: transcript.segments,
-            suggestions: suggestions.suggestions
+            suggestions: suggestions.suggestions,
+            memory: suggestions.memory?.memory.isEmpty == false ? suggestions.memory?.memory : nil
         )
         do {
             try archive.save(session)

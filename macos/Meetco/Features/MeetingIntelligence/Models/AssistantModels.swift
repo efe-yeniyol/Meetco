@@ -49,6 +49,8 @@ struct AssistantRequest: Sendable {
     var previousAnswers: [String] = []
     /// Who answers: decides the wire protocol and which request options are sent.
     var provider: AssistantProvider = .openAI
+    /// What is known about this meeting: people, facts and a summary of earlier parts.
+    var memory: MeetingMemory?
 }
 
 /// An answer that is still being streamed.
@@ -141,6 +143,8 @@ struct AssistantOutput: Sendable, Equatable {
     var items: [SuggestionItem] = []
     var actionItems: [String] = []
     var openQuestions: [String] = []
+    /// The updated meeting memory (`.memory` requests).
+    var memory: MeetingMemory?
 }
 
 enum AssistantError: LocalizedError, Equatable {

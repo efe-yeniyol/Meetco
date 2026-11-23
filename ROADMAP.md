@@ -61,6 +61,7 @@ material instead of guessing.
 - ✅ macOS and Windows apps with the same features
 - ✅ Assistant providers: OpenAI, Claude, DeepSeek, local models (Ollama, LM Studio), any OpenAI-compatible server
 - ✅ On-device transcription (Apple speech model on macOS 26+, Whisper on Windows)
+- ✅ Meeting memory: people (names, roles, companies), key facts and a running summary of the current meeting, used in every answer
 - ✅ 57 languages: automatic language detection, question detection in any language, answers and translations in any language
 - ✅ One-click downloads: macOS DMG and Windows zips on GitHub Releases
 

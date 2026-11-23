@@ -8,6 +8,8 @@ struct ArchivedSession: Codable, Sendable {
     var meetingTopic: String?
     var segments: [TranscriptSegment]
     var suggestions: [Suggestion]
+    /// People and key facts Meetco gathered during the meeting.
+    var memory: MeetingMemory?
 }
 
 /// Saves transcripts as JSON in ~/Library/Application Support/Meetco/Sessions.

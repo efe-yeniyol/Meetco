@@ -79,6 +79,7 @@ call. It is built for the meetings where you are expected to have answers ready:
 calls, demos, project and team meetings, and conversations in a second language.
 
 - **Answers in your voice.** When someone asks you a question, Meetco writes the answer in the first person, ready to say out loud, in the speaker's language, with an optional translation into your own language.
+- **Remembers the meeting.** Meetco keeps track of who is in the call (names, roles, companies) and what has been said (facts, numbers, decisions), so answers stay consistent with the whole meeting and fit the person asking.
 - **Multilingual.** Meetco works in 57 languages: it detects the spoken language automatically, follows the conversation when it switches languages, and spots questions in any of them.
 - **No meeting bot.** Meetco never joins the call. It listens to your computer's audio output and, optionally, your microphone.
 - **You stay in control.** Meetco never speaks, types or sends anything for you. You read the suggestion or copy it.
@@ -100,6 +101,7 @@ Platform guides: **[macOS](macos/README.md)** · **[Windows](windows/README.md)*
 - Detects questions automatically in any language and starts answering as soon as one ends (see [Languages](#languages)).
 - Writes in your voice: first person, natural spoken language, and the real answer rather than an acknowledgement.
 - Uses your **About you** notes (role, company, experience) as your own background, and does not make up personal facts, prices or commitments.
+- **Meeting memory:** picks up names, roles and companies as people introduce themselves or are mentioned, and the key facts, numbers, decisions and commitments of the meeting. Every answer, recap and question list uses it: answers build on what was already said, never contradict what you said earlier, and are tailored to who is asking (technical depth for an engineer, business impact for a manager). Shown under **People** in the panel.
 - The answer appears word by word, starting from the model's first token.
 - On demand: **What should I say?**, **Recap so far**, **Questions to ask**, or answer any earlier question from the transcript.
 - Copy, regenerate, dismiss, browse earlier answers, and attach a screenshot as context.

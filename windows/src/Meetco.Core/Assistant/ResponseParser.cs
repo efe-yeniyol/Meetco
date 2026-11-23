@@ -53,6 +53,28 @@ public static class ResponseParser
                     OpenQuestions = Strings(json["open_questions"]),
                 };
             }
+            case SuggestionKind.Memory:
+            {
+                var people = new List<MeetingParticipant>();
+                if (json["participants"] is JsonArray participants)
+                {
+                    foreach (var entry in participants)
+                    {
+                        if (entry is JsonObject person && Str(person["name"]) is { } name)
+                        {
+                            people.Add(new MeetingParticipant(name, Str(person["role"]), Str(person["organization"]), Str(person["notes"])));
+                        }
+                    }
+                }
+                var memory = new MeetingMemory
+                {
+                    UserName = Str(json["user_name"]),
+                    Participants = people,
+                    Facts = Strings(json["facts"]),
+                    Summary = Str(json["summary"]) ?? "",
+                };
+                return output with { Memory = memory.Trimmed() };
+            }
             default:
             {
                 var items = new List<SuggestionItem>();

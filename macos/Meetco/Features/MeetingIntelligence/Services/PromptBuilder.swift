@@ -21,6 +21,7 @@ enum PromptBuilder {
     }
 
     static func systemPrompt(for request: AssistantRequest) -> String {
+        if request.kind == .memory { return memorySystemPrompt }
         let preferences = request.preferences
         let isSpoken = request.kind == .answer || request.kind == .whatToSay
         let shared = """
@@ -34,7 +35,9 @@ enum PromptBuilder {
 
         Rules:
         - Use your own knowledge freely for anything that is general knowledge: how things work, definitions, recipes, techniques, technical concepts, best practices, well-known facts. Give the real content with concrete specifics (ingredients and typical amounts, steps, names, numbers that are commonly known).
-        - Never invent facts about the user or their business: their personal history, employers, prices, dates, commitments, internal numbers or product capabilities must come from the transcript or the user's notes. Only when an answer truly depends on such private details, give an honest answer that offers to confirm or follow up.
+        - Never invent facts about the user or their business: their personal history, employers, prices, dates, commitments, internal numbers or product capabilities must come from the transcript, the meeting memory or the user's notes. Only when an answer truly depends on such private details, give an honest answer that offers to confirm or follow up.
+        - What was said in this meeting is the ground truth for this meeting. When a question touches something already discussed (numbers, dates, decisions, names, requirements, or what the user said earlier), build on it, reuse those specifics and stay consistent with it. Never contradict what the user already said.
+        - People: the "People in this meeting" list says who is present, as far as the conversation revealed it. Use it to understand who is probably asking (from names, roles and context) and tailor the answer to them: technical depth for engineers, business impact for managers and buyers. You may address someone by name when it is natural, at most once. Never guess a name or role that is not in the list or the transcript.
         - Style: \(preferences.style.promptDescription)
         - Language: \(languageRule(preferences.responseLanguage))
         """
@@ -73,7 +76,11 @@ enum PromptBuilder {
 
         let context = request.preferences.userContext.trimmingCharacters(in: .whitespacesAndNewlines)
         sections.append("## About the user\n" + (context.isEmpty ? "No additional information provided." : context))
+        if request.kind == .memory { return memoryUserPrompt(for: request) }
         sections.append("## Meeting topic so far\n" + (request.meetingTopic?.isEmpty == false ? request.meetingTopic! : "Not identified yet."))
+        if let memory = request.memory, !memory.isEmpty {
+            sections.append(contentsOf: memorySections(memory))
+        }
         sections.append("## Transcript (oldest first)\n" + formattedTranscript(request.transcript))
 
         if !request.previousAnswers.isEmpty {
@@ -120,12 +127,76 @@ enum PromptBuilder {
             Summarize the meeting so far for the user: a short summary, key points, action items (with owners when stated) and open questions.
             Only include what was actually said. Write the recap in \(recapLanguage(request.preferences)).
             """
+        case .memory:
+            return ""
         case .questionsToAsk:
             return """
             Suggest 3 to 5 smart, specific questions the user could ask the other participants next, based on the conversation so far.
             Write them in the language the participants are speaking (or \(request.preferences.responseLanguage.languageName ?? "the conversation language") if set). Keep each under 25 words.
             """
         }
+    }
+
+    // MARK: Meeting memory
+
+    /// People, facts and summary as prompt sections for answer, recap and question requests.
+    static func memorySections(_ memory: MeetingMemory) -> [String] {
+        var sections: [String] = []
+        var people: [String] = []
+        if let user = memory.userName { people.append("- \(user) (the user, the \"You\" lines)") }
+        for person in memory.participants {
+            var line = "- \(person.name)"
+            if let detail = person.detail { line += " — \(detail)" }
+            if let notes = person.notes, !notes.isEmpty { line += ". \(notes)" }
+            people.append(line)
+        }
+        if !people.isEmpty { sections.append("## People in this meeting\n" + people.joined(separator: "\n")) }
+        var earlier: [String] = []
+        if !memory.summary.isEmpty { earlier.append(memory.summary) }
+        if !memory.facts.isEmpty { earlier.append("Key facts:\n" + memory.facts.map { "- \($0)" }.joined(separator: "\n")) }
+        if !earlier.isEmpty { sections.append("## Earlier in this meeting (memory)\n" + earlier.joined(separator: "\n\n")) }
+        return sections
+    }
+
+    static let memorySystemPrompt = """
+    You are the note-taker of Meetco, a real-time meeting copilot. You keep a compact memory of a live meeting \
+    from its automatically generated transcript, so that answers later in the meeting can use who is present \
+    and what was said.
+
+    Transcript conventions:
+    - "Participant" lines are other people in the meeting (captured from the computer's audio output). Several people can share this label.
+    - "You" lines are the user's own microphone.
+    - Speech recognition can contain mistakes, especially in names; infer the intended meaning sensibly.
+
+    Rules:
+    - Only record what the transcript actually says. Never guess names, roles or facts.
+    - People: add everyone who introduces themselves or is named or addressed ("Thanks, Ayşe", "our CTO Mark will…"). Record role and organization only when stated or obvious from what they said. If a participant clearly has a role but no name was said, use a short description as the name ("Customer's CTO") and replace it with the real name once it is said. Do not list the user there; put the user's own name, if said, in user_name.
+    - In notes, keep one short line per person: what they care about, asked or are responsible for.
+    - Facts: things that later answers must stay consistent with: numbers, prices, dates, deadlines, requirements, decisions, commitments, problems raised and what the user already answered. Say who said it ("Ayşe: budget is €50k for Q3"). One short line each, most important last. Merge duplicates and update facts that changed.
+    - Summary: what the meeting is about and where the conversation is now, under 120 words.
+    - Keep everything from the existing memory that is still true, and write everything in the language of the meeting.
+    - Always respond with a single JSON object that matches the requested schema.
+    """
+
+    private static func memoryUserPrompt(for request: AssistantRequest) -> String {
+        var sections: [String] = []
+        let context = request.preferences.userContext.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !context.isEmpty { sections.append("## About the user (do not copy into the memory)\n" + context) }
+        let existing = request.memory.flatMap { $0.isEmpty ? nil : $0 }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        if let existing, let data = try? encoder.encode(existing), let json = String(data: data, encoding: .utf8) {
+            sections.append("## Existing memory\n" + json)
+        } else {
+            sections.append("## Existing memory\nEmpty: this is the start of the meeting.")
+        }
+        sections.append("## New transcript lines (oldest first)\n" + formattedTranscript(request.transcript))
+        sections.append("""
+        ## Task
+        Return the updated meeting memory: the existing memory merged with what the new lines reveal. \
+        At most \(MeetingMemory.maxParticipants) people and \(MeetingMemory.maxFacts) facts.
+        """)
+        return sections.joined(separator: "\n\n")
     }
 
     private static func languageRule(_ language: ResponseLanguage) -> String {
@@ -172,6 +243,7 @@ enum PromptBuilder {
         case .answer, .whatToSay: "meeting_answer"
         case .recap: "meeting_recap"
         case .questionsToAsk: "meeting_questions"
+        case .memory: "meeting_memory"
         }
     }
 
@@ -198,6 +270,22 @@ enum PromptBuilder {
                 "action_items": ["type": "array", "items": ["type": "string"]],
                 "open_questions": ["type": "array", "items": ["type": "string"]],
                 "language": ["type": "string"],
+                "meeting_topic": ["type": "string"],
+            ])
+        case .memory:
+            return object([
+                "user_name": ["type": "string", "description": "The user's own name if said in the meeting, otherwise empty."],
+                "participants": [
+                    "type": "array",
+                    "items": object([
+                        "name": ["type": "string"],
+                        "role": ["type": "string", "description": "Job title or role in the meeting, or empty."],
+                        "organization": ["type": "string", "description": "Company or team, or empty."],
+                        "notes": ["type": "string", "description": "One short line, or empty."],
+                    ]),
+                ],
+                "facts": ["type": "array", "items": ["type": "string"]],
+                "summary": ["type": "string"],
                 "meeting_topic": ["type": "string"],
             ])
         case .questionsToAsk:
