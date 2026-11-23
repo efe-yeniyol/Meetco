@@ -4,6 +4,7 @@
         Title="Meetco Settings"
         Width="620" Height="640" MinWidth="520" MinHeight="460"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowTintBrush}"
         FontFamily="{StaticResource UiFont}">
 
     <Window.Resources>
@@ -172,6 +173,10 @@
                     <CheckBox Content="Global keyboard shortcuts" IsChecked="{Binding Settings.GlobalShortcutsEnabled}" />
                     <CheckBox Content="Scroll the transcript automatically" IsChecked="{Binding Settings.AutoScrollTranscript}" />
                     <CheckBox Content="Clear the transcript when a new session starts" IsChecked="{Binding Settings.ClearTranscriptOnNewSession}" />
+
+                    <TextBlock Text="Glass color" Style="{StaticResource Label}" />
+                    <ComboBox ItemsSource="{Binding GlassTints}" DisplayMemberPath="Title" SelectedValuePath="Value"
+                              SelectedValue="{Binding Settings.GlassTint}" />
 
                     <TextBlock Text="Panel size at launch" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding PanelSizes}" DisplayMemberPath="Title" SelectedValuePath="Value"

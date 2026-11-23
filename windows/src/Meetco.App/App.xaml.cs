@@ -12,6 +12,7 @@ using Meetco.Core.Session;
 using Meetco.Core.Settings;
 using Meetco.Core.Transcription;
 using MeetcoApp.Platform;
+using MeetcoApp.Themes;
 using MeetcoApp.ViewModels;
 using MeetcoApp.Views;
 
@@ -176,6 +177,7 @@ public partial class App : Application
         _hotKeys = new HotKeyManager();
         _hotKeys.ActionInvoked += Perform;
         ApplyHotKeys();
+        GlassTheme.Apply(settings.GlassTint);
         settings.PropertyChanged += OnSettingsChanged;
     }
 
@@ -383,6 +385,9 @@ public partial class App : Application
         {
             case nameof(AppSettings.GlobalShortcutsEnabled):
                 ApplyHotKeys();
+                break;
+            case nameof(AppSettings.GlassTint):
+                GlassTheme.Apply(_settings!.GlassTint);
                 break;
             case nameof(AppSettings.HideFromScreenSharing):
                 var hidden = _settings!.HideFromScreenSharing;

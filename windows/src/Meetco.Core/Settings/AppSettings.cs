@@ -11,6 +11,30 @@ namespace Meetco.Core.Settings;
 [JsonConverter(typeof(JsonStringEnumConverter<PanelSize>))]
 public enum PanelSize { Compact, Expanded }
 
+/// <summary>Colour of the floating glass windows. <see cref="Neutral"/> is the original dark glass.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<GlassTint>))]
+public enum GlassTint { Neutral, Teal, Orange, Blue, Purple, Green }
+
+public static class GlassTintExtensions
+{
+    public static string Title(this GlassTint tint) => tint switch
+    {
+        GlassTint.Neutral => "Black & White",
+        _ => tint.ToString(),
+    };
+
+    /// <summary>Fully saturated colour of the tint as (r, g, b). Matches the macOS app.</summary>
+    public static (byte R, byte G, byte B) Rgb(this GlassTint tint) => tint switch
+    {
+        GlassTint.Teal => (0x00, 0x99, 0xA3),
+        GlassTint.Orange => (0xFA, 0x85, 0x1F),
+        GlassTint.Blue => (0x29, 0x6B, 0xF2),
+        GlassTint.Purple => (0x8C, 0x4D, 0xE6),
+        GlassTint.Green => (0x33, 0xAD, 0x52),
+        _ => (0x0A, 0x84, 0xFF),
+    };
+}
+
 /// <summary>
 /// User preferences, persisted as JSON (in %APPDATA%\Meetco\settings.json in the app).
 /// The API key is NOT stored here (see <see cref="IApiKeyStore"/>).
@@ -46,6 +70,7 @@ public sealed class AppSettings : ObservableObject
 
     // General
     private PanelSize _defaultPanelSize = PanelSize.Expanded;
+    private GlassTint _glassTint = GlassTint.Neutral;
     private bool _alwaysOnTop = true;
     private bool _hideFromScreenSharing;
     private bool _globalShortcutsEnabled = true;
@@ -90,6 +115,7 @@ public sealed class AppSettings : ObservableObject
     public WhisperModelSize WhisperModel { get => _whisperModel; set => Set(ref _whisperModel, value); }
 
     public PanelSize DefaultPanelSize { get => _defaultPanelSize; set => Set(ref _defaultPanelSize, value); }
+    public GlassTint GlassTint { get => _glassTint; set => Set(ref _glassTint, value); }
     public bool AlwaysOnTop { get => _alwaysOnTop; set => Set(ref _alwaysOnTop, value); }
     public bool HideFromScreenSharing { get => _hideFromScreenSharing; set => Set(ref _hideFromScreenSharing, value); }
     public bool GlobalShortcutsEnabled { get => _globalShortcutsEnabled; set => Set(ref _globalShortcutsEnabled, value); }

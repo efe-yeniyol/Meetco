@@ -87,6 +87,23 @@ enum AppearanceMode: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
+/// Colour of the floating glass panels. `neutral` is the black (dark) / white (light) tint.
+enum GlassTint: String, CaseIterable, Identifiable, Codable, Sendable {
+    case neutral, teal, orange, blue, purple, green
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .neutral: "Black & White"
+        case .teal: "Teal"
+        case .orange: "Orange"
+        case .blue: "Blue"
+        case .purple: "Purple"
+        case .green: "Green"
+        }
+    }
+}
+
 enum PanelSize: String, CaseIterable, Identifiable, Codable, Sendable {
     case compact, expanded
 

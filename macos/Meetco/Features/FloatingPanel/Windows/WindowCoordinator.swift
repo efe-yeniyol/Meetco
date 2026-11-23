@@ -104,6 +104,7 @@ final class WindowCoordinator {
         }
 
         for panel in [controlBar, mainPanel].compactMap({ $0 }) {
+            if let content = panel.contentView { GlassContainer.applyTint(settings.glassTint, to: content) }
             panel.level = settings.alwaysOnTop ? .floating : .normal
             panel.collectionBehavior = settings.showOnAllSpaces
                 ? [.canJoinAllSpaces, .fullScreenAuxiliary]

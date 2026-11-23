@@ -99,6 +99,7 @@ extension View {
     @MainActor
     func meetcoEnvironment(_ environment: AppEnvironment, actions: AppActions) -> some View {
         self
+            .glassAccent()
             .environment(environment.settings)
             .environment(environment.appState)
             .environment(environment.permissions)
