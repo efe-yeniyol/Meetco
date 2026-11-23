@@ -16,6 +16,7 @@ enum SettingsKeys {
     static let responseStyle = "settings.responseStyle"
     static let userContext = "settings.userContext"
     static let autoSuggest = "settings.autoSuggest"
+    static let detectQuestionsInAnyLanguage = "settings.detectQuestionsInAnyLanguage"
     static let transcriptionLanguage = "settings.transcriptionLanguage"
     static let latencyProfile = "settings.latencyProfile"
     static let captureMode = "settings.captureMode"
@@ -54,6 +55,8 @@ final class SettingsStore {
     var responseStyle: ResponseStyle { didSet { save(responseStyle, SettingsKeys.responseStyle) } }
     var userContext: String { didSet { defaults.set(userContext, forKey: SettingsKeys.userContext) } }
     var autoSuggest: Bool { didSet { defaults.set(autoSuggest, forKey: SettingsKeys.autoSuggest) } }
+    /// Lets the assistant model decide whether phrases the local detector missed are questions (any language).
+    var detectQuestionsInAnyLanguage: Bool { didSet { defaults.set(detectQuestionsInAnyLanguage, forKey: SettingsKeys.detectQuestionsInAnyLanguage) } }
 
     // Audio & transcription
     var transcriptionLanguage: TranscriptionLanguage { didSet { save(transcriptionLanguage, SettingsKeys.transcriptionLanguage) } }
@@ -96,6 +99,7 @@ final class SettingsStore {
         responseStyle = Self.load(defaults, SettingsKeys.responseStyle, .concise)
         userContext = defaults.string(forKey: SettingsKeys.userContext) ?? ""
         autoSuggest = defaults.object(forKey: SettingsKeys.autoSuggest) as? Bool ?? true
+        detectQuestionsInAnyLanguage = defaults.object(forKey: SettingsKeys.detectQuestionsInAnyLanguage) as? Bool ?? true
         transcriptionLanguage = Self.load(defaults, SettingsKeys.transcriptionLanguage, .auto)
         latencyProfile = Self.load(defaults, SettingsKeys.latencyProfile, .fast)
         captureMode = Self.load(defaults, SettingsKeys.captureMode, .systemAndMicrophone)

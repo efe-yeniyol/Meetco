@@ -35,6 +35,12 @@ that download is the only request it makes.
 OpenAI's servers. Voice activity detection, language identification and question detection run
 on-device.
 
+With **Detect questions in any language** (Settings → Assistant, on by default), the assistant
+provider also receives a request for phrases the local detector did not recognise as questions, so
+it decides whether they need an answer. These requests contain the same transcript excerpt as any
+other answer request; there is simply more of them. Turn the setting off to send requests only for
+recognised questions and for actions you trigger.
+
 ## What stays on your computer
 
 | | macOS | Windows |

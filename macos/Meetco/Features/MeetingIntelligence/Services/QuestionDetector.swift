@@ -1,9 +1,26 @@
 import Foundation
 
 /// Fast, local heuristic that decides whether a transcript segment contains a question.
-/// It gates automatic AI requests so the model is not called after every sentence.
-/// Supports English and Turkish.
+///
+/// Question marks are recognised in every script (Latin, Arabic, CJK, Greek, Armenian…); word lists
+/// cover English and Turkish. Phrases this heuristic misses in any language are still answered when
+/// "Detect questions in any language" is on: the assistant model then decides (see `SuggestionEngine`).
 struct QuestionDetector: Sendable {
+    /// Question marks across scripts: ASCII, full-width (CJK), Arabic/Persian/Urdu, Armenian, Ethiopic,
+    /// the Spanish opening mark and the small/vertical forms. (The Greek question mark is canonically
+    /// a semicolon, so Greek questions are left to the model.)
+    static let questionMarks: Set<Character> = ["?", "？", "؟", "⸮", "՞", "፧", "¿", "﹖", "︖"]
+
+    static func containsQuestionMark(_ text: String) -> Bool {
+        text.contains { questionMarks.contains($0) }
+    }
+
+    /// True when the text ends with a question mark (ignoring closing quotes and spaces).
+    static func endsWithQuestionMark(_ text: String) -> Bool {
+        guard let last = text.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'”’»」』)"))).last else { return false }
+        return questionMarks.contains(last)
+    }
+
     private static let englishStarters: [String] = [
         "what", "what's", "whats", "how", "how's", "why", "when", "where", "who", "whom", "whose", "which",
         "can you", "could you", "would you", "will you", "can we", "could we", "would it", "will it",
@@ -40,8 +57,8 @@ struct QuestionDetector: Sendable {
 
     func score(_ text: String) -> Double {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.split(separator: " ").count >= 2 else { return trimmed.hasSuffix("?") ? 0.6 : 0 }
-        if trimmed.contains("?") { return 1 }
+        guard trimmed.split(whereSeparator: \.isWhitespace).count >= 2 else { return Self.endsWithQuestionMark(trimmed) ? 0.6 : 0 }
+        if Self.containsQuestionMark(trimmed) { return 1 }
 
         let lastSentences = Self.lastSentences(trimmed, count: 2).lowercased()
 

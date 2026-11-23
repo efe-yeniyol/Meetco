@@ -54,6 +54,7 @@ public sealed class AppSettings : ObservableObject
     private ResponseStyle _responseStyle = ResponseStyle.Concise;
     private string _userContext = "";
     private bool _autoSuggest = true;
+    private bool _detectQuestionsInAnyLanguage = true;
 
     // Assistant provider
     private AssistantProvider _assistantProvider = AssistantProvider.OpenAI;
@@ -89,6 +90,9 @@ public sealed class AppSettings : ObservableObject
     public ResponseStyle ResponseStyle { get => _responseStyle; set => Set(ref _responseStyle, value); }
     public string UserContext { get => _userContext; set => Set(ref _userContext, value); }
     public bool AutoSuggest { get => _autoSuggest; set => Set(ref _autoSuggest, value); }
+
+    /// <summary>Lets the assistant model decide whether phrases the local detector missed are questions (any language).</summary>
+    public bool DetectQuestionsInAnyLanguage { get => _detectQuestionsInAnyLanguage; set => Set(ref _detectQuestionsInAnyLanguage, value); }
 
     public AssistantProvider AssistantProvider
     {

@@ -69,16 +69,19 @@ public sealed class SettingsViewModel : ObservableObject
         string.Join("\n", ModelCatalog.TranscriptionModels.Select(m => $"{m.Id}: {m.Note}"));
 
     public IReadOnlyList<Option> ResponseLanguages { get; } =
-        Enum.GetValues<ResponseLanguage>().Select(v => new Option(v, v.Title())).ToList();
+        LanguageChoice.AllChoices<ResponseLanguage>().Select(v => new Option(v, v.Title())).ToList();
 
     public IReadOnlyList<Option> ExplanationLanguages { get; } =
-        Enum.GetValues<ExplanationLanguage>().Select(v => new Option(v, v.Title())).ToList();
+        LanguageChoice.AllChoices<ExplanationLanguage>().Select(v => new Option(v, v.Title())).ToList();
+
+    public string LanguageHint { get; } =
+        $"Meetco works in {SpokenLanguage.All.Count} languages and answers in the speaker's language.";
 
     public IReadOnlyList<Option> ResponseStyles { get; } =
         Enum.GetValues<ResponseStyle>().Select(v => new Option(v, v.ToString())).ToList();
 
     public IReadOnlyList<Option> TranscriptionLanguages { get; } =
-        Enum.GetValues<TranscriptionLanguage>().Select(v => new Option(v, v.Title())).ToList();
+        LanguageChoice.AllChoices<TranscriptionLanguage>().Select(v => new Option(v, v.Title())).ToList();
 
     public IReadOnlyList<Option> LatencyProfiles { get; } =
         Enum.GetValues<LatencyProfile>().Select(v => new Option(v, v.ToString() + " — " + v.Detail())).ToList();

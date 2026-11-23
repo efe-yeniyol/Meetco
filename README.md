@@ -7,12 +7,13 @@
 <p align="center">
   <b>Your AI companion for every conversation.</b><br>
   A native copilot for macOS and Windows. It listens to your call, spots the questions asked to you,<br>
-  and types out an answer in your own words as soon as they are asked.
+  and types out an answer in your own words as soon as they are asked, in any of 57 languages.
 </p>
 
 <p align="center">
   <a href="#download"><img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple"></a>
   <a href="#download"><img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows"></a>
+  <img alt="57 languages" src="https://img.shields.io/badge/languages-57-orange">
   <img alt="Bring your own key" src="https://img.shields.io/badge/account-none%2C%20bring%20your%20own%20key-success">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
   <a href="https://github.com/efe-yeniyol/Meetco/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/efe-yeniyol/Meetco"></a>
@@ -77,7 +78,8 @@ Meetco is a small floating assistant that sits next to Google Meet, Microsoft Te
 call. It is built for the meetings where you are expected to have answers ready: sales and customer
 calls, demos, project and team meetings, and conversations in a second language.
 
-- **Answers in your voice.** When someone asks you a question, Meetco writes the answer in the first person, ready to say out loud, in the speaker's language, with an optional Turkish or English translation.
+- **Answers in your voice.** When someone asks you a question, Meetco writes the answer in the first person, ready to say out loud, in the speaker's language, with an optional translation into your own language.
+- **Multilingual.** Meetco works in 57 languages: it detects the spoken language automatically, follows the conversation when it switches languages, and spots questions in any of them.
 - **No meeting bot.** Meetco never joins the call. It listens to your computer's audio output and, optionally, your microphone.
 - **You stay in control.** Meetco never speaks, types or sends anything for you. You read the suggestion or copy it.
 - **Bring your own key, or run it locally.** There is no Meetco account, server or subscription. AI usage goes through your own key (OpenAI, Claude, DeepSeek…) or a model on your own computer.
@@ -95,7 +97,7 @@ Platform guides: **[macOS](macos/README.md)** · **[Windows](windows/README.md)*
 ## Features
 
 **Answers**
-- Detects questions automatically (English and Turkish) and starts answering as soon as one ends.
+- Detects questions automatically in any language and starts answering as soon as one ends (see [Languages](#languages)).
 - Writes in your voice: first person, natural spoken language, and the real answer rather than an acknowledgement.
 - Uses your **About you** notes (role, company, experience) as your own background, and does not make up personal facts, prices or commitments.
 - The answer appears word by word, starting from the model's first token.
@@ -116,6 +118,26 @@ Platform guides: **[macOS](macos/README.md)** · **[Windows](windows/README.md)*
 Coming next: meeting memory, a knowledge base from your own documents, post-meeting summaries and
 more. See the **[Roadmap](ROADMAP.md)**.
 
+## Languages
+
+Meetco works in the 57 languages OpenAI's speech models support, including English, Turkish, German,
+French, Spanish, Italian, Portuguese, Dutch, Polish, Russian, Ukrainian, Arabic, Hebrew, Persian,
+Hindi, Japanese, Korean, Chinese, Indonesian and Vietnamese. Every language works the same way:
+
+| | How it works | Setting |
+|---|---|---|
+| **Spoken language** | Detected automatically for every phrase, even when people switch languages mid-meeting. You can fix one language for better accuracy. | Settings → Audio |
+| **Questions** | Spotted instantly by a question mark in any script (`?` `？` `؟` `¿`…) or by English and Turkish keywords. Every other phrase is checked by the assistant model, so indirect questions ("Tell us about your last project") are caught in any language. | Settings → Assistant → *Detect questions in any language* (on by default) |
+| **Answer** | Written in the language the question was asked in, or always in a language you choose. | Settings → Assistant → Response language |
+| **Translation** | Optional line under each answer in your own language, in any of the 57 languages. | Settings → Assistant → Explanation language |
+
+*Detect questions in any language* sends more requests to your assistant provider (one per phrase
+from other participants), but it adds no delay: the answer starts in the same request. Turn it off
+to answer only phrases the local detector recognises.
+
+On-device transcription listens to one language at a time: macOS uses your Mac's language unless you
+pick another, and Whisper on Windows detects the language itself.
+
 ## How it works
 
 ```
@@ -128,7 +150,7 @@ more. See the **[Roadmap](ROADMAP.md)**.
 
 1. Meetco detects speech on your computer and transcribes only the speech, either live with OpenAI or on your computer.
 2. When the speaker pauses (about 0.35 s), the phrase is committed and its transcript comes back.
-3. If a participant's phrase looks like a question, Meetco asks the assistant model for an answer straight away.
+3. If a participant's phrase looks like a question, Meetco asks the assistant model for an answer straight away. Any other phrase is checked by the model too (in any language), and the answer only appears if it really was a question.
 4. The answer streams back as plain text and appears on screen as it is written.
 
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

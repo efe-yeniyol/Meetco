@@ -139,7 +139,7 @@ macos/
 ├── Meetco/
 │   ├── App/                    App entry point, AppDelegate, AppEnvironment (DI), AppState, AppActions
 │   ├── Core/
-│   │   ├── Models/             AudioSource, TranscriptSegment, Suggestion, Preferences + model catalog
+│   │   ├── Models/             AudioSource, TranscriptSegment, Suggestion, Preferences + model catalog, SpokenLanguage (57 languages)
 │   │   ├── Protocols/          Service protocols (transcription, assistant, key storage, screen capture)
 │   │   ├── Utilities/          Logging, language detection, text similarity, WAV encoding, JSON helpers
 │   │   └── DesignSystem/       Theme tokens, glass containers, shared components

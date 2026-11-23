@@ -7,6 +7,12 @@ import Observation
 /// (so the full question is captured), duplicates are skipped, and any in-flight automatic
 /// request is cancelled when a newer question arrives. Manual actions (What should I say?,
 /// Recap, Questions to ask, Regenerate) are always honored.
+///
+/// Any language: the local `QuestionDetector` only knows question marks and English/Turkish words.
+/// With "Detect questions in any language" on, every other Participant phrase starts a *probe*: an
+/// ordinary answer request whose prompt lets the model reply "NONE" when there is nothing to answer.
+/// A probe stays invisible (no draft, no spinner) until the model starts a real answer, and it never
+/// interrupts an answer that is already being written. It adds no latency, only extra requests.
 @MainActor
 @Observable
 final class SuggestionEngine {
@@ -19,6 +25,8 @@ final class SuggestionEngine {
     /// A follow-up phrase within this window is treated as the rest of the question.
     static let continuationWindow: TimeInterval = 2.5
     static let duplicateThreshold = 0.72
+    /// Shortest phrase (in characters) worth a probe; shorter ones are acknowledgements like "OK".
+    static let probeMinimumLength = 4
 
     private struct AutomaticTrigger {
         let segmentID: UUID
@@ -51,6 +59,10 @@ final class SuggestionEngine {
     @ObservationIgnored private var recentAutomaticQuestions: [String] = []
     @ObservationIgnored private var lastAutomatic: AutomaticTrigger?
     @ObservationIgnored private var draftRequestID: UUID?
+    /// The automatic request in flight; `confirmed` is false for a probe the model has not confirmed yet.
+    @ObservationIgnored private var automaticRequest: (id: UUID, confirmed: Bool)?
+    /// Requests shown in `activeKinds` (unconfirmed probes are not).
+    @ObservationIgnored private var visibleRequests: Set<UUID> = []
 
     init(
         assistant: any MeetingAssisting,
@@ -139,7 +151,7 @@ final class SuggestionEngine {
             } else {
                 pendingQuestion = segment
             }
-            scheduleAutomaticTrigger(endsWithQuestionMark: segment.text.trimmingCharacters(in: .whitespaces).hasSuffix("?"))
+            scheduleAutomaticTrigger(endsWithQuestionMark: QuestionDetector.endsWithQuestionMark(segment.text))
         } else if pendingQuestion != nil {
             // The participant is still talking — wait a little longer for the full question.
             scheduleAutomaticTrigger(endsWithQuestionMark: false)
@@ -149,7 +161,24 @@ final class SuggestionEngine {
                   Date().timeIntervalSince(last.firedAt) < 8 {
             // The question continued after we already started answering: answer the full question.
             continueAutomaticAnswer(last, with: segment)
+        } else if settings.detectQuestionsInAnyLanguage,
+                  segment.text.trimmingCharacters(in: .whitespacesAndNewlines).count >= Self.probeMinimumLength {
+            probe(segment)
         }
+    }
+
+    /// Lets the model decide whether a phrase the local detector missed is a question (any language).
+    private func probe(_ segment: TranscriptSegment) {
+        // An answer is already being written: let it finish.
+        if let current = automaticRequest, current.confirmed { return }
+        if recentAutomaticQuestions.contains(where: { TextSimilarity.jaccard($0, segment.text) >= Self.duplicateThreshold }) { return }
+        automaticTask?.cancel()
+        automaticTask = generate(
+            kind: .answer,
+            triggerSegmentID: segment.id,
+            automatic: true,
+            probe: AutomaticTrigger(segmentID: segment.id, questionText: segment.text, questionEnd: segment.endedAt, firedAt: Date())
+        )
     }
 
     private func continueAutomaticAnswer(_ last: AutomaticTrigger, with segment: TranscriptSegment) {
@@ -272,6 +301,8 @@ final class SuggestionEngine {
         pendingSince = nil
         recentAutomaticQuestions.removeAll()
         lastAutomatic = nil
+        automaticRequest = nil
+        visibleRequests.removeAll()
         draft = nil
         draftRequestID = nil
         suggestions.removeAll()
@@ -298,7 +329,8 @@ final class SuggestionEngine {
         focusIsExplicit: Bool = false,
         triggerSegmentID: UUID? = nil,
         automatic: Bool = false,
-        replacing: Suggestion? = nil
+        replacing: Suggestion? = nil,
+        probe: AutomaticTrigger? = nil
     ) -> Task<Void, Never>? {
         if let reason = assistantUnavailableReason {
             lastError = reason
@@ -319,17 +351,23 @@ final class SuggestionEngine {
             provider: settings.assistantProvider
         )
         let usedScreen = request.screenContext != nil
-        activeKinds.append(kind)
-        Log.assistant.info("Requesting \(kind.rawValue, privacy: .public) (automatic: \(automatic))")
+        Log.assistant.info("Requesting \(kind.rawValue, privacy: .public) (automatic: \(automatic), probe: \(probe != nil))")
 
         let requestID = UUID()
+        if probe == nil {
+            activeKinds.append(kind)
+            visibleRequests.insert(requestID)
+        }
+        if automatic { automaticRequest = (requestID, probe == nil) }
         let streamsAnswer = kind == .answer || kind == .whatToSay
         let draftID = replacing?.id ?? UUID()
-        let fallbackQuestion = focusQuestion
+        // A probe sends no question hint (the model finds the question itself) but shows the phrase once confirmed.
+        let fallbackQuestion = focusQuestion ?? probe?.questionText
         if streamsAnswer {
             draftRequestID = requestID
             // Show the question the moment it is heard, before the first word of the answer arrives.
-            if let fallbackQuestion, !fallbackQuestion.isEmpty {
+            // A probe shows nothing until the model confirms there is a question.
+            if probe == nil, let fallbackQuestion, !fallbackQuestion.isEmpty {
                 draft = Suggestion(id: draftID, kind: kind, question: fallbackQuestion, text: "",
                                    triggerSegmentID: triggerSegmentID, isAutomatic: automatic)
                 selectedSuggestionID = nil
@@ -344,7 +382,7 @@ final class SuggestionEngine {
             do {
                 let output = try await self.assistant.generate(request) { [weak self] partial in
                     self?.updateDraft(partial, kind: kind, id: draftID, requestID: requestID, automatic: automatic,
-                                      fallbackQuestion: fallbackQuestion, triggerSegmentID: triggerSegmentID)
+                                      fallbackQuestion: fallbackQuestion, triggerSegmentID: triggerSegmentID, probe: probe)
                 }
                 try Task.checkCancellation()
                 if usedScreen { self.pendingScreenContext = nil }
@@ -360,7 +398,8 @@ final class SuggestionEngine {
     }
 
     private func finish(_ kind: Suggestion.Kind, requestID: UUID) {
-        if let index = activeKinds.firstIndex(of: kind) { activeKinds.remove(at: index) }
+        if visibleRequests.remove(requestID) != nil, let index = activeKinds.firstIndex(of: kind) { activeKinds.remove(at: index) }
+        if automaticRequest?.id == requestID { automaticRequest = nil }
         if draftRequestID == requestID {
             draft = nil
             draftRequestID = nil
@@ -374,11 +413,15 @@ final class SuggestionEngine {
         requestID: UUID,
         automatic: Bool,
         fallbackQuestion: String?,
-        triggerSegmentID: UUID?
+        triggerSegmentID: UUID?,
+        probe: AutomaticTrigger?
     ) {
         guard draftRequestID == requestID else { return }
         // For automatic triggers, only show something once the model confirms there is a question.
         if automatic && partial.questionDetected != true { return }
+        if let probe, automaticRequest?.id == requestID, automaticRequest?.confirmed == false {
+            confirmProbe(probe, kind: kind, requestID: requestID)
+        }
         let question = partial.question.flatMap { $0.isEmpty ? nil : $0 } ?? fallbackQuestion
         if draft == nil { selectedSuggestionID = nil }
         draft = Suggestion(
@@ -390,6 +433,17 @@ final class SuggestionEngine {
             triggerSegmentID: triggerSegmentID,
             isAutomatic: automatic
         )
+    }
+
+    /// The model started a real answer to a probe: treat it like a detected question from now on.
+    private func confirmProbe(_ probe: AutomaticTrigger, kind: Suggestion.Kind, requestID: UUID) {
+        automaticRequest = (requestID, true)
+        activeKinds.append(kind)
+        visibleRequests.insert(requestID)
+        recentAutomaticQuestions.append(probe.questionText)
+        if recentAutomaticQuestions.count > 12 { recentAutomaticQuestions.removeFirst() }
+        lastAutomatic = AutomaticTrigger(segmentID: probe.segmentID, questionText: probe.questionText,
+                                         questionEnd: probe.questionEnd, firedAt: Date())
     }
 
     private func accept(

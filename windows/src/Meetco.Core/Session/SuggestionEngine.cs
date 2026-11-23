@@ -16,6 +16,12 @@ namespace Meetco.Core.Session;
 /// (so the full question is captured), duplicates are skipped, and any in-flight automatic
 /// request is cancelled when a newer question arrives. Manual actions (What should I say?,
 /// Recap, Questions to ask, Regenerate) are always honored. UI-thread only.
+///
+/// Any language: the local QuestionDetector only knows question marks and English/Turkish words.
+/// With "Detect questions in any language" on, every other Participant phrase starts a *probe*: an
+/// ordinary answer request whose prompt lets the model reply "NONE" when there is nothing to answer.
+/// A probe stays invisible (no draft, no spinner) until the model starts a real answer, and it never
+/// interrupts an answer that is already being written. It adds no latency, only extra requests.
 /// </summary>
 public sealed class SuggestionEngine : ObservableObject
 {
@@ -30,6 +36,8 @@ public sealed class SuggestionEngine : ObservableObject
     /// <summary>A follow-up phrase within this window is treated as the rest of the question.</summary>
     public static readonly TimeSpan ContinuationWindow = TimeSpan.FromSeconds(2.5);
     public const double DuplicateThreshold = 0.72;
+    /// <summary>Shortest phrase (in characters) worth a probe; shorter ones are acknowledgements like "OK".</summary>
+    public const int ProbeMinimumLength = 4;
 
     private sealed record AutomaticTrigger(Guid SegmentId, string QuestionText, DateTimeOffset QuestionEnd, DateTimeOffset FiredAt);
 
@@ -49,6 +57,8 @@ public sealed class SuggestionEngine : ObservableObject
     private AutomaticTrigger? _lastAutomatic;
     private Guid? _draftRequestId;
     private readonly List<(SuggestionKind Kind, Guid RequestId)> _activeRequests = [];
+    /// <summary>The automatic request in flight; Confirmed is false for a probe the model has not confirmed yet.</summary>
+    private (Guid Id, bool Confirmed)? _automaticRequest;
 
     private Guid? _selectedSuggestionId;
     private Suggestion? _draft;
@@ -199,7 +209,7 @@ public sealed class SuggestionEngine : ObservableObject
             {
                 _pendingQuestion = segment;
             }
-            ScheduleAutomaticTrigger(segment.Text.TrimEnd().EndsWith('?'));
+            ScheduleAutomaticTrigger(QuestionDetector.EndsWithQuestionMark(segment.Text));
         }
         else if (_pendingQuestion is not null)
         {
@@ -214,6 +224,21 @@ public sealed class SuggestionEngine : ObservableObject
             // The question continued after we already started answering: answer the full question.
             ContinueAutomaticAnswer(last, segment);
         }
+        else if (_settings.DetectQuestionsInAnyLanguage && segment.Text.Trim().Length >= ProbeMinimumLength)
+        {
+            Probe(segment);
+        }
+    }
+
+    /// <summary>Lets the model decide whether a phrase the local detector missed is a question (any language).</summary>
+    private void Probe(TranscriptSegment segment)
+    {
+        // An answer is already being written: let it finish.
+        if (_automaticRequest is { Confirmed: true }) return;
+        if (_recentAutomaticQuestions.Any(previous => TextSimilarity.Jaccard(previous, segment.Text) >= DuplicateThreshold)) return;
+        _automatic?.Cancel();
+        _automatic = Generate(SuggestionKind.Answer, triggerSegmentId: segment.Id, automatic: true,
+            probe: new AutomaticTrigger(segment.Id, segment.Text, segment.EndedAt, _now()));
     }
 
     private void ContinueAutomaticAnswer(AutomaticTrigger last, TranscriptSegment segment)
@@ -332,6 +357,7 @@ public sealed class SuggestionEngine : ObservableObject
         _pendingSince = null;
         _recentAutomaticQuestions.Clear();
         _lastAutomatic = null;
+        _automaticRequest = null;
         _draftRequestId = null;
         Draft = null;
         Suggestions.Clear();
@@ -356,7 +382,8 @@ public sealed class SuggestionEngine : ObservableObject
         bool focusIsExplicit = false,
         Guid? triggerSegmentId = null,
         bool automatic = false,
-        Suggestion? replacing = null)
+        Suggestion? replacing = null,
+        AutomaticTrigger? probe = null)
     {
         if (AssistantUnavailableReason is { } reason)
         {
@@ -379,16 +406,23 @@ public sealed class SuggestionEngine : ObservableObject
             PreviousAnswers = PreviousAnswers(replacing),
         };
         var requestId = Guid.NewGuid();
-        _activeRequests.Add((kind, requestId));
-        NotifyGenerating();
-        Log.Info("assistant", $"Requesting {kind} (automatic: {automatic})");
+        if (probe is null)
+        {
+            _activeRequests.Add((kind, requestId));
+            NotifyGenerating();
+        }
+        if (automatic) _automaticRequest = (requestId, probe is null);
+        Log.Info("assistant", $"Requesting {kind} (automatic: {automatic}, probe: {probe is not null})");
 
         var draftId = replacing?.Id ?? Guid.NewGuid();
+        // A probe sends no question hint (the model finds the question itself) but shows the phrase once confirmed.
+        var fallbackQuestion = focusQuestion ?? probe?.QuestionText;
         if (kind.IsSpoken())
         {
             _draftRequestId = requestId;
             // Show the question the moment it is heard, before the first word of the answer arrives.
-            if (!string.IsNullOrEmpty(focusQuestion))
+            // A probe shows nothing until the model confirms there is a question.
+            if (probe is null && !string.IsNullOrEmpty(focusQuestion))
             {
                 Draft = new Suggestion
                 {
@@ -407,7 +441,7 @@ public sealed class SuggestionEngine : ObservableObject
         }
 
         var source = new CancellationTokenSource();
-        _ = RunAsync(request, kind, draftId, requestId, focusQuestion, triggerSegmentId, automatic, replacing, source.Token);
+        _ = RunAsync(request, kind, draftId, requestId, fallbackQuestion, triggerSegmentId, automatic, replacing, probe, source.Token);
         return source;
     }
 
@@ -420,6 +454,7 @@ public sealed class SuggestionEngine : ObservableObject
         Guid? triggerSegmentId,
         bool automatic,
         Suggestion? replacing,
+        AutomaticTrigger? probe,
         CancellationToken token)
     {
         var usedScreen = request.ScreenContext is not null;
@@ -427,7 +462,7 @@ public sealed class SuggestionEngine : ObservableObject
         {
             var output = await _assistant.GenerateAsync(
                 request,
-                partial => UpdateDraft(partial, kind, draftId, requestId, automatic, fallbackQuestion, triggerSegmentId),
+                partial => UpdateDraft(partial, kind, draftId, requestId, automatic, fallbackQuestion, triggerSegmentId, probe),
                 token);
             token.ThrowIfCancellationRequested();
             if (usedScreen) PendingScreenContext = null;
@@ -453,6 +488,7 @@ public sealed class SuggestionEngine : ObservableObject
         // By id: a cancelled request finishing late must not clear a newer request's spinner.
         _activeRequests.RemoveAll(r => r.RequestId == requestId);
         NotifyGenerating();
+        if (_automaticRequest?.Id == requestId) _automaticRequest = null;
         if (_draftRequestId == requestId)
         {
             Draft = null;
@@ -460,11 +496,15 @@ public sealed class SuggestionEngine : ObservableObject
         }
     }
 
-    private void UpdateDraft(AssistantPartial partial, SuggestionKind kind, Guid id, Guid requestId, bool automatic, string? fallbackQuestion, Guid? triggerSegmentId)
+    private void UpdateDraft(AssistantPartial partial, SuggestionKind kind, Guid id, Guid requestId, bool automatic, string? fallbackQuestion, Guid? triggerSegmentId, AutomaticTrigger? probe)
     {
         if (_draftRequestId != requestId) return;
         // For automatic triggers, only show something once the model confirms there is a question.
         if (automatic && partial.QuestionDetected != true) return;
+        if (probe is not null && _automaticRequest is { Confirmed: false } current && current.Id == requestId)
+        {
+            ConfirmProbe(probe, kind, requestId);
+        }
         var question = string.IsNullOrEmpty(partial.Question) ? fallbackQuestion : partial.Question;
         if (Draft is null) SelectedSuggestionId = null;
         Draft = new Suggestion
@@ -477,6 +517,17 @@ public sealed class SuggestionEngine : ObservableObject
             TriggerSegmentId = triggerSegmentId,
             IsAutomatic = automatic,
         };
+    }
+
+    /// <summary>The model started a real answer to a probe: treat it like a detected question from now on.</summary>
+    private void ConfirmProbe(AutomaticTrigger probe, SuggestionKind kind, Guid requestId)
+    {
+        _automaticRequest = (requestId, true);
+        _activeRequests.Add((kind, requestId));
+        NotifyGenerating();
+        _recentAutomaticQuestions.Add(probe.QuestionText);
+        if (_recentAutomaticQuestions.Count > 12) _recentAutomaticQuestions.RemoveAt(0);
+        _lastAutomatic = probe with { FiredAt = _now() };
     }
 
     private void Accept(

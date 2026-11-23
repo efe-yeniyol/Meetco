@@ -35,7 +35,6 @@ material instead of guessing.
 
 ## 3. Answers
 
-- 🟡 **More languages** for question detection (German, Spanish, French…), not only English and Turkish.
 - 🟡 **Answer styles.** Short / detailed / bullet points, and a per-profile tone.
 - 🟡 **Speaker names** instead of "Participants" / "You" (diarisation), so answers can address the right person.
 - ⚪ **Live fact check.** Flag when something said contradicts your knowledge base.
@@ -62,6 +61,7 @@ material instead of guessing.
 - ✅ macOS and Windows apps with the same features
 - ✅ Assistant providers: OpenAI, Claude, DeepSeek, local models (Ollama, LM Studio), any OpenAI-compatible server
 - ✅ On-device transcription (Apple speech model on macOS 26+, Whisper on Windows)
+- ✅ 57 languages: automatic language detection, question detection in any language, answers and translations in any language
 - ✅ One-click downloads: macOS DMG and Windows zips on GitHub Releases
 
 Want to help with one of these? See [CONTRIBUTING.md](CONTRIBUTING.md).

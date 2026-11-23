@@ -102,8 +102,10 @@ When you change prompts, thresholds or the wire format in the Swift app, mirror 
 
 - System audio is captured with WASAPI loopback instead of ScreenCaptureKit. Every sound the
   default output device plays is captured, including notification sounds.
-- Language detection for transcript badges is a lightweight English/Turkish heuristic
-  (macOS uses Apple's NaturalLanguage framework). The OpenAI transcription itself is unchanged.
+- Language detection for transcript badges is a lightweight heuristic: scripts (Japanese, Korean,
+  Chinese, Arabic, Cyrillic, Greek…) and common words for Latin-script languages (macOS uses Apple's
+  NaturalLanguage framework). It only labels the transcript; transcription and answers work in all
+  57 languages either way.
 - On-device transcription uses Whisper (whisper.cpp via Whisper.net) instead of Apple's speech
   model. It runs on the CPU: on older PCs choose the **Fast** model if answers lag behind.
 - "Hide from screen sharing" uses `WDA_EXCLUDEFROMCAPTURE`, which most screen-sharing apps on

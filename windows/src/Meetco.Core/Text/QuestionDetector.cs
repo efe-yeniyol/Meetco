@@ -4,11 +4,30 @@ namespace Meetco.Core.Text;
 
 /// <summary>
 /// Fast, local heuristic that decides whether a transcript segment contains a question.
-/// It gates automatic AI requests so the model is not called after every sentence.
-/// Supports English and Turkish.
+/// Question marks are recognised in every script (Latin, Arabic, CJK, Armenian…); word lists cover
+/// English and Turkish. Phrases this heuristic misses in any language are still answered when
+/// "Detect questions in any language" is on: the assistant model then decides (see SuggestionEngine).
 /// </summary>
 public sealed partial class QuestionDetector
 {
+    /// <summary>
+    /// Question marks across scripts: ASCII, full-width (CJK), Arabic/Persian/Urdu, Armenian, Ethiopic,
+    /// the Spanish opening mark and the small/vertical forms. (The Greek question mark is a semicolon,
+    /// so Greek questions are left to the model.)
+    /// </summary>
+    public static readonly char[] QuestionMarks = ['?', '？', '؟', '⸮', '՞', '፧', '¿', '﹖', '︖'];
+
+    private static readonly char[] TrailingClosers = [' ', '\t', '\r', '\n', '"', '\'', '”', '’', '»', '」', '』', ')'];
+
+    public static bool ContainsQuestionMark(string text) => text.IndexOfAny(QuestionMarks) >= 0;
+
+    /// <summary>True when the text ends with a question mark (ignoring closing quotes and spaces).</summary>
+    public static bool EndsWithQuestionMark(string text)
+    {
+        var trimmed = text.TrimEnd(TrailingClosers);
+        return trimmed.Length > 0 && Array.IndexOf(QuestionMarks, trimmed[^1]) >= 0;
+    }
+
     private static readonly string[] EnglishStarters =
     [
         "what", "what's", "whats", "how", "how's", "why", "when", "where", "who", "whom", "whose", "which",
@@ -48,8 +67,8 @@ public sealed partial class QuestionDetector
     public double Score(string text)
     {
         var trimmed = text.Trim();
-        if (trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length < 2) return trimmed.EndsWith('?') ? 0.6 : 0;
-        if (trimmed.Contains('?')) return 1;
+        if (trimmed.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length < 2) return EndsWithQuestionMark(trimmed) ? 0.6 : 0;
+        if (ContainsQuestionMark(trimmed)) return 1;
 
         var lastSentences = LastSentences(trimmed, 2).ToLowerInvariant();
 

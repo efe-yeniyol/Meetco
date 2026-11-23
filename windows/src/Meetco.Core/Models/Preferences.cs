@@ -3,17 +3,8 @@ using Meetco.Core.Audio;
 
 namespace Meetco.Core.Models;
 
-[JsonConverter(typeof(JsonStringEnumConverter<ResponseLanguage>))]
-public enum ResponseLanguage { Auto, English, Turkish, German, French, Spanish }
-
-[JsonConverter(typeof(JsonStringEnumConverter<ExplanationLanguage>))]
-public enum ExplanationLanguage { None, Turkish, English }
-
 [JsonConverter(typeof(JsonStringEnumConverter<ResponseStyle>))]
 public enum ResponseStyle { Concise, Detailed, Formal, Friendly, Technical }
-
-[JsonConverter(typeof(JsonStringEnumConverter<TranscriptionLanguage>))]
-public enum TranscriptionLanguage { Auto, English, Turkish }
 
 /// <summary>Trade-off between transcription latency and API usage.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<LatencyProfile>))]
@@ -21,41 +12,11 @@ public enum LatencyProfile { Fast, Balanced, Economical }
 
 public static class PreferenceExtensions
 {
-    public static string Title(this ResponseLanguage language) =>
-        language == ResponseLanguage.Auto ? "Match the speaker (automatic)" : language.LanguageName()!;
+    /// <summary>ISO-639-1 code passed to the transcription API, null for auto-detect.</summary>
+    public static string? IsoCode(this TranscriptionLanguage language) => language.Code;
 
-    /// <summary>English name of the language, used in prompts. Null for automatic.</summary>
-    public static string? LanguageName(this ResponseLanguage language) => language switch
-    {
-        ResponseLanguage.English => "English",
-        ResponseLanguage.Turkish => "Turkish",
-        ResponseLanguage.German => "German",
-        ResponseLanguage.French => "French",
-        ResponseLanguage.Spanish => "Spanish",
-        _ => null,
-    };
-
-    public static string Title(this ExplanationLanguage language) => language switch
-    {
-        ExplanationLanguage.Turkish => "Turkish",
-        ExplanationLanguage.English => "English",
-        _ => "Off",
-    };
-
-    public static string? LanguageName(this ExplanationLanguage language) => language switch
-    {
-        ExplanationLanguage.Turkish => "Turkish",
-        ExplanationLanguage.English => "English",
-        _ => null,
-    };
-
-    /// <summary>Short badge shown next to explanations.</summary>
-    public static string Badge(this ExplanationLanguage language) => language switch
-    {
-        ExplanationLanguage.Turkish => "TR",
-        ExplanationLanguage.English => "EN",
-        _ => "",
-    };
+    /// <summary>Short badge shown next to explanations ("TR"), empty when off.</summary>
+    public static string Badge(this ExplanationLanguage language) => language.Language()?.Badge ?? "";
 
     public static string PromptDescription(this ResponseStyle style) => style switch
     {
@@ -64,21 +25,6 @@ public static class PreferenceExtensions
         ResponseStyle.Formal => "Formal, polished business tone in 2–4 sentences.",
         ResponseStyle.Friendly => "Warm, friendly and conversational; usually 2–5 sentences, with the actual substance included.",
         _ => "Technically precise with correct terminology in 2–5 sentences.",
-    };
-
-    public static string Title(this TranscriptionLanguage language) => language switch
-    {
-        TranscriptionLanguage.English => "English",
-        TranscriptionLanguage.Turkish => "Turkish",
-        _ => "Detect automatically",
-    };
-
-    /// <summary>ISO-639-1 code passed to the transcription API, null for auto-detect.</summary>
-    public static string? IsoCode(this TranscriptionLanguage language) => language switch
-    {
-        TranscriptionLanguage.English => "en",
-        TranscriptionLanguage.Turkish => "tr",
-        _ => null,
     };
 
     public static string Detail(this LatencyProfile profile) => profile switch

@@ -1,59 +1,28 @@
 import Foundation
 
-enum ResponseLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
-    case auto, english, turkish, german, french, spanish
+/// Language of suggested answers: the speaker's language (automatic) or a fixed one.
+struct ResponseLanguage: LanguageChoice {
+    static let noneRawValue = "auto"
+    static let noneTitle = "Match the speaker (automatic)"
+    static let auto = ResponseLanguage(code: nil)
 
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .auto: "Match the speaker (automatic)"
-        default: languageName ?? rawValue
-        }
-    }
-
-    /// English name of the language, used in prompts. Nil for automatic.
-    var languageName: String? {
-        switch self {
-        case .auto: nil
-        case .english: "English"
-        case .turkish: "Turkish"
-        case .german: "German"
-        case .french: "French"
-        case .spanish: "Spanish"
-        }
-    }
+    let code: String?
+    init(code: String?) { self.code = code }
 }
 
-enum ExplanationLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
-    case none, turkish, english
+/// Language of the translation shown under an answer, or off.
+struct ExplanationLanguage: LanguageChoice {
+    static let noneRawValue = "none"
+    static let noneTitle = "Off"
+    static let none = ExplanationLanguage(code: nil)
+    static let turkish = ExplanationLanguage(code: "tr")
+    static let english = ExplanationLanguage(code: "en")
 
-    var id: String { rawValue }
+    let code: String?
+    init(code: String?) { self.code = code }
 
-    var title: String {
-        switch self {
-        case .none: "Off"
-        case .turkish: "Turkish"
-        case .english: "English"
-        }
-    }
-
-    var languageName: String? {
-        switch self {
-        case .none: nil
-        case .turkish: "Turkish"
-        case .english: "English"
-        }
-    }
-
-    /// Short badge shown next to explanations.
-    var badge: String {
-        switch self {
-        case .none: ""
-        case .turkish: "TR"
-        case .english: "EN"
-        }
-    }
+    /// Short badge shown next to explanations ("TR"), empty when off.
+    var badge: String { language?.badge ?? "" }
 }
 
 enum ResponseStyle: String, CaseIterable, Identifiable, Codable, Sendable {
@@ -111,27 +80,17 @@ enum PanelSize: String, CaseIterable, Identifiable, Codable, Sendable {
     var title: String { rawValue.capitalized }
 }
 
-enum TranscriptionLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
-    case auto, english, turkish
+/// The language spoken in the meeting: detected automatically, or fixed for better accuracy.
+struct TranscriptionLanguage: LanguageChoice {
+    static let noneRawValue = "auto"
+    static let noneTitle = "Detect automatically"
+    static let auto = TranscriptionLanguage(code: nil)
 
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .auto: "Detect automatically"
-        case .english: "English"
-        case .turkish: "Turkish"
-        }
-    }
+    let code: String?
+    init(code: String?) { self.code = code }
 
     /// ISO-639-1 code passed to the transcription API, nil for auto-detect.
-    var isoCode: String? {
-        switch self {
-        case .auto: nil
-        case .english: "en"
-        case .turkish: "tr"
-        }
-    }
+    var isoCode: String? { code }
 }
 
 /// Trade-off between transcription latency and API usage.

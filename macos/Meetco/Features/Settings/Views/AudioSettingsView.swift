@@ -38,6 +38,10 @@ struct AudioSettingsView: View {
                 Picker("Spoken language", selection: $settings.transcriptionLanguage) {
                     ForEach(TranscriptionLanguage.allCases) { Text($0.title).tag($0) }
                 }
+                Text(languageDetail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Picker("Latency", selection: $settings.latencyProfile) {
                     ForEach(LatencyProfile.allCases) { Text($0.title).tag($0) }
                 }
@@ -55,6 +59,15 @@ struct AudioSettingsView: View {
         }
         .formStyle(.grouped)
         .onAppear { devices = AudioDeviceManager.inputDevices() }
+    }
+
+    private var languageDetail: String {
+        switch settings.transcriptionProvider {
+        case .openAI:
+            "Detect automatically follows the speakers in any language, even when they switch mid-meeting. Pick a language only to improve accuracy for that one."
+        case .onDevice:
+            "The on-device model listens to one language at a time. Detect automatically uses your Mac's language; pick the meeting's language if it is different."
+        }
     }
 
     private var engineDetail: String {

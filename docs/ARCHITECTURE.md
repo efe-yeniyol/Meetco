@@ -33,6 +33,24 @@ TranscriptStore ──► SuggestionEngine     trigger, merge continuations, ded
 source to its chunker and live transcription connection, flushes utterances when audio stops
 arriving, and reconnects system audio after interruptions.
 
+## Languages
+
+`SpokenLanguage` is the catalog of the 57 languages (ISO code, English name for prompts, native name
+for Settings). The three language settings (`TranscriptionLanguage`, `ResponseLanguage`,
+`ExplanationLanguage`) store an ISO code, or `auto` / `none`; values saved by older versions as
+English names ("turkish") still load.
+
+Question detection has two layers:
+
+1. `QuestionDetector` (local, instant): a question mark in any script, or English/Turkish keywords.
+   These segments are answered after the usual debounce.
+2. *Probes* in `SuggestionEngine` (any language, on by default): every other phrase from other
+   participants starts a normal answer request without a question hint. The prompt already tells the
+   model to reply `NONE` when there is nothing to answer, so a probe stays invisible (no draft, no
+   spinner) until the first words of a real answer arrive. A probe never cancels an answer that is
+   already being written, and a newer probe replaces an unconfirmed one. Once confirmed it behaves
+   like a detected question (continuations, de-duplication).
+
 ## Where things live
 
 | Concern | macOS (`macos/Meetco/`) | Windows (`windows/src/`) |
@@ -40,6 +58,8 @@ arriving, and reconnects system audio after interruptions.
 | Composition root | `App/AppEnvironment.swift` | `Meetco.App/App.xaml.cs` |
 | Voice activity detection | `Features/AudioCapture/Services/AudioChunker.swift` | `Meetco.Core/Audio/AudioChunker.cs` |
 | Live transcription | `Features/Transcription/Services/RealtimeTranscription.swift` | `Meetco.Core/Transcription/RealtimeTranscription.cs`, `RealtimeWire.cs` |
+| Language catalog | `Core/Models/SpokenLanguage.swift` | `Meetco.Core/Models/SpokenLanguage.cs` |
+| Language identification | `Core/Utilities/LanguageDetector.swift` (NaturalLanguage) | `Meetco.Core/Text/LanguageDetector.cs` (scripts + common words) |
 | Question detection | `Features/MeetingIntelligence/Services/QuestionDetector.swift` | `Meetco.Core/Text/QuestionDetector.cs` |
 | Prompts and schemas | `Features/MeetingIntelligence/Services/PromptBuilder.swift` | `Meetco.Core/Assistant/PromptBuilder.cs` |
 | Answer parsing | `ResponseParser.swift`, `AssistantModels.swift` | `Meetco.Core/Assistant/ResponseParser.cs`, `AssistantModels.cs` |
@@ -69,7 +89,8 @@ Behavior that the user notices must match on both platforms. When you change any
 app, change the other in the same pull request:
 
 - prompt text, JSON schemas and the plain-text answer format (`PromptBuilder`, `PlainAnswer`)
-- question detection word lists and thresholds (`QuestionDetector`)
+- question detection word lists, question marks and thresholds (`QuestionDetector`)
+- the language catalog (`SpokenLanguage`) and the probe rules in `SuggestionEngine`
 - voice activity and latency settings (`AudioChunkerConfiguration`, `LatencyProfile`)
 - suggestion timing (`SuggestionEngine` debounce, continuation and duplicate thresholds)
 - the model catalog and reasoning-effort rules (`ModelCatalog`)

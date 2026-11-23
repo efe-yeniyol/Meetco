@@ -100,12 +100,18 @@
                     <TextBlock Text="Translation under the answer" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding ExplanationLanguages}" DisplayMemberPath="Title" SelectedValuePath="Value"
                               SelectedValue="{Binding Settings.ExplanationLanguage}" />
+                    <TextBlock Text="{Binding LanguageHint}" Style="{StaticResource Hint}" />
 
                     <TextBlock Text="Answer style" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding ResponseStyles}" DisplayMemberPath="Title" SelectedValuePath="Value"
                               SelectedValue="{Binding Settings.ResponseStyle}" />
 
                     <CheckBox Content="Answer questions automatically" IsChecked="{Binding Settings.AutoSuggest}" />
+                    <CheckBox Content="Detect questions in any language" Margin="0,6,0,0"
+                              IsChecked="{Binding Settings.DetectQuestionsInAnyLanguage}"
+                              IsEnabled="{Binding Settings.AutoSuggest}" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Questions are spotted instantly by their question mark, or by keywords in English and Turkish. With this on, the assistant model also checks every other phrase from participants, in any language, and answers only real questions. More requests to your provider, no extra delay." />
 
                 </StackPanel>
             </ScrollViewer>
@@ -157,7 +163,8 @@
                     <TextBlock Text="Transcription language" Style="{StaticResource Label}" />
                     <ComboBox ItemsSource="{Binding TranscriptionLanguages}" DisplayMemberPath="Title" SelectedValuePath="Value"
                               SelectedValue="{Binding Settings.TranscriptionLanguage}" />
-                    <TextBlock Style="{StaticResource Hint}" Text="Changes apply the next time you start listening." />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Detect automatically follows the speakers in any language, even when they switch mid-meeting. Pick a language only to improve accuracy for that one. Changes apply the next time you start listening." />
                 </StackPanel>
             </ScrollViewer>
         </TabItem>

@@ -22,7 +22,7 @@ struct AssistantSettingsView: View {
             ProviderConnectionSection(provider: settings.assistantProvider, dependencies: dependencies)
                 .id(settings.assistantProvider)
 
-            Section("Responses") {
+            Section {
                 Picker("Response language", selection: $settings.responseLanguage) {
                     ForEach(ResponseLanguage.allCases) { Text($0.title).tag($0) }
                 }
@@ -33,6 +33,13 @@ struct AssistantSettingsView: View {
                     ForEach(ResponseStyle.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Suggest answers automatically when a question is detected", isOn: $settings.autoSuggest)
+                Toggle("Detect questions in any language", isOn: $settings.detectQuestionsInAnyLanguage)
+                    .disabled(!settings.autoSuggest)
+            } header: {
+                Text("Responses")
+            } footer: {
+                Text("Meetco works in \(SpokenLanguage.all.count) languages and answers in the speaker's language. Questions are spotted instantly by their question mark, or by keywords in English and Turkish. With \"Detect questions in any language\" on, the assistant model also checks every other phrase from participants, in any language, and answers only real questions. This makes more requests to your provider but adds no delay.")
+                    .foregroundStyle(.secondary)
             }
 
             Section {
