@@ -107,6 +107,10 @@
                               SelectedValue="{Binding Settings.ResponseStyle}" />
 
                     <CheckBox Content="Answer questions automatically" IsChecked="{Binding Settings.AutoSuggest}" />
+                    <CheckBox Content="Meeting memory: remember people and what was said" Margin="0,6,0,0"
+                              IsChecked="{Binding Settings.MeetingMemoryEnabled}" />
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="Keeps track of who is in the meeting (names, roles, companies) and the facts, numbers and decisions mentioned, so answers stay consistent with the whole meeting and fit the person asking. Updated in the background about every 30 seconds of conversation; see the People tab." />
                     <CheckBox Content="Detect questions in any language" Margin="0,6,0,0"
                               IsChecked="{Binding Settings.DetectQuestionsInAnyLanguage}"
                               IsEnabled="{Binding Settings.AutoSuggest}" />

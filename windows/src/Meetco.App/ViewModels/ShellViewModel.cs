@@ -21,6 +21,7 @@ public sealed class ShellViewModel : ObservableObject
     private bool _isControlBarVisible = true;
     private bool _isCompact;
     private bool _isTranscriptTab;
+    private bool _isPeopleTab;
     private string _elapsedText = "";
 
     public ShellViewModel(
@@ -62,8 +63,9 @@ public sealed class ShellViewModel : ObservableObject
         });
         TogglePanelCommand = new RelayCommand(TogglePanel);
         ToggleCompactCommand = new RelayCommand(() => IsCompact = !IsCompact);
-        ShowAnswersCommand = new RelayCommand(() => IsTranscriptTab = false);
+        ShowAnswersCommand = new RelayCommand(() => { IsTranscriptTab = false; IsPeopleTab = false; });
         ShowTranscriptCommand = new RelayCommand(() => IsTranscriptTab = true);
+        ShowPeopleCommand = new RelayCommand(() => IsPeopleTab = true);
         HidePanelCommand = new RelayCommand(() => IsPanelVisible = false);
         CopyCommand = new RelayCommand(parameter =>
         {
@@ -124,11 +126,28 @@ public sealed class ShellViewModel : ObservableObject
         get => _isTranscriptTab;
         set
         {
-            if (SetProperty(ref _isTranscriptTab, value)) OnPropertyChanged(nameof(IsAnswersTab));
+            if (!SetProperty(ref _isTranscriptTab, value)) return;
+            if (value) IsPeopleTab = false;
+            OnPropertyChanged(nameof(IsAnswersTab));
         }
     }
 
-    public bool IsAnswersTab => !IsTranscriptTab;
+    /// <summary>People and key points Meetco gathered from the conversation.</summary>
+    public bool IsPeopleTab
+    {
+        get => _isPeopleTab;
+        set
+        {
+            if (!SetProperty(ref _isPeopleTab, value)) return;
+            if (value) IsTranscriptTab = false;
+            OnPropertyChanged(nameof(IsAnswersTab));
+        }
+    }
+
+    public bool IsAnswersTab => !IsTranscriptTab && !IsPeopleTab;
+
+    /// <summary>Meeting memory (people, key points); null when not configured.</summary>
+    public MeetingMemoryEngine? Memory => Suggestions.Memory;
 
     public string ElapsedText { get => _elapsedText; private set => SetProperty(ref _elapsedText, value); }
 
@@ -155,6 +174,7 @@ public sealed class ShellViewModel : ObservableObject
     public ICommand ToggleCompactCommand { get; }
     public ICommand ShowAnswersCommand { get; }
     public ICommand ShowTranscriptCommand { get; }
+    public ICommand ShowPeopleCommand { get; }
     public ICommand HidePanelCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand RegenerateCommand { get; }
@@ -175,6 +195,7 @@ public sealed class ShellViewModel : ObservableObject
     public void ShowAnswers()
     {
         IsTranscriptTab = false;
+        IsPeopleTab = false;
         IsControlBarVisible = true;
         IsPanelVisible = true;
     }

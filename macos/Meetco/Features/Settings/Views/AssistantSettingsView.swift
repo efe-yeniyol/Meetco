@@ -35,10 +35,11 @@ struct AssistantSettingsView: View {
                 Toggle("Suggest answers automatically when a question is detected", isOn: $settings.autoSuggest)
                 Toggle("Detect questions in any language", isOn: $settings.detectQuestionsInAnyLanguage)
                     .disabled(!settings.autoSuggest)
+                Toggle("Meeting memory: remember people and what was said", isOn: $settings.meetingMemoryEnabled)
             } header: {
                 Text("Responses")
             } footer: {
-                Text("Meetco works in \(SpokenLanguage.all.count) languages and answers in the speaker's language. Questions are spotted instantly by their question mark, or by keywords in English and Turkish. With \"Detect questions in any language\" on, the assistant model also checks every other phrase from participants, in any language, and answers only real questions. This makes more requests to your provider but adds no delay.")
+                Text("Meetco works in \(SpokenLanguage.all.count) languages and answers in the speaker's language. Questions are spotted instantly by their question mark, or by keywords in English and Turkish. With \"Detect questions in any language\" on, the assistant model also checks every other phrase from participants, in any language, and answers only real questions. This makes more requests to your provider but adds no delay.\n\nMeeting memory keeps track of who is in the meeting (names, roles, companies) and the facts, numbers and decisions mentioned, so answers stay consistent with the whole meeting and fit the person asking. It is updated in the background about every 30 seconds of conversation and shown in the panel's sidebar.")
                     .foregroundStyle(.secondary)
             }
 

@@ -9,6 +9,8 @@ public enum SuggestionKind
     WhatToSay,
     Recap,
     QuestionsToAsk,
+    /// <summary>Background update of the meeting memory (people, facts, summary). Never shown as a card.</summary>
+    Memory,
 }
 
 public static class SuggestionKindExtensions
@@ -18,6 +20,7 @@ public static class SuggestionKindExtensions
         SuggestionKind.Answer => "Suggested answer",
         SuggestionKind.WhatToSay => "What to say",
         SuggestionKind.Recap => "Recap so far",
+        SuggestionKind.Memory => "Meeting memory",
         _ => "Questions to ask",
     };
 
@@ -76,6 +79,7 @@ public sealed record Suggestion
             {
                 case SuggestionKind.Answer:
                 case SuggestionKind.WhatToSay:
+                case SuggestionKind.Memory:
                     return Text;
                 case SuggestionKind.Recap:
                     var parts = new List<string> { Text };

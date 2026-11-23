@@ -34,6 +34,8 @@ public sealed record AssistantRequest
     public IReadOnlyList<string> PreviousAnswers { get; init; } = [];
     /// <summary>Who answers: decides the wire protocol and which request options are sent.</summary>
     public AssistantProvider Provider { get; init; } = AssistantProvider.OpenAI;
+    /// <summary>What is known about this meeting: people, facts and a summary of earlier parts.</summary>
+    public MeetingMemory? Memory { get; init; }
 }
 
 /// <summary>An answer that is still being streamed.</summary>
@@ -136,6 +138,8 @@ public sealed record AssistantOutput
     public IReadOnlyList<SuggestionItem> Items { get; init; } = [];
     public IReadOnlyList<string> ActionItems { get; init; } = [];
     public IReadOnlyList<string> OpenQuestions { get; init; } = [];
+    /// <summary>The updated meeting memory (Memory requests).</summary>
+    public MeetingMemory? Memory { get; init; }
 }
 
 public enum AssistantErrorKind { InvalidResponse, EmptyResponse, Refused, Truncated }

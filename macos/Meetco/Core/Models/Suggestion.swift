@@ -14,6 +14,8 @@ struct Suggestion: Identifiable, Codable, Sendable, Hashable {
         case whatToSay
         case recap
         case questionsToAsk
+        /// Background update of the meeting memory (people, facts, summary). Never shown as a card.
+        case memory
 
         var title: String {
             switch self {
@@ -21,6 +23,7 @@ struct Suggestion: Identifiable, Codable, Sendable, Hashable {
             case .whatToSay: "What to say"
             case .recap: "Recap so far"
             case .questionsToAsk: "Questions to ask"
+            case .memory: "Meeting memory"
             }
         }
 
@@ -30,6 +33,7 @@ struct Suggestion: Identifiable, Codable, Sendable, Hashable {
             case .whatToSay: "quote.bubble"
             case .recap: "list.bullet.rectangle"
             case .questionsToAsk: "questionmark.bubble"
+            case .memory: "person.2"
             }
         }
     }
@@ -65,7 +69,7 @@ struct Suggestion: Identifiable, Codable, Sendable, Hashable {
     /// Plain text representation suitable for the clipboard.
     var clipboardText: String {
         switch kind {
-        case .answer, .whatToSay:
+        case .answer, .whatToSay, .memory:
             return text
         case .recap:
             var parts = [text]

@@ -82,7 +82,7 @@ public sealed class OpenAIMeetingAssistant(IOpenAIClient client) : IMeetingAssis
             StructuredOutput.JsonObject => ResponseFormat.JsonObjectFormat,
             _ => null,
         };
-        var tokenLimit = isReasoning ? 4000 : (request.Kind == SuggestionKind.Recap ? 900 : 600);
+        var tokenLimit = isReasoning ? 4000 : request.Kind switch { SuggestionKind.Memory => 1500, SuggestionKind.Recap => 900, _ => 600 };
         return new ChatCompletionRequest
         {
             Model = request.Model,

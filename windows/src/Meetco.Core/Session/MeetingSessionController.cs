@@ -298,7 +298,8 @@ public sealed class MeetingSessionController : ObservableObject, IDisposable
     {
         try
         {
-            _archive?.Save(new ArchivedSession(startedAt, DateTimeOffset.Now, _suggestions.MeetingTopic, [.. _transcript.Segments], [.. _suggestions.Suggestions]));
+            _archive?.Save(new ArchivedSession(startedAt, DateTimeOffset.Now, _suggestions.MeetingTopic, [.. _transcript.Segments], [.. _suggestions.Suggestions],
+                _suggestions.Memory?.Memory is { IsEmpty: false } memory ? memory : null));
         }
         catch (Exception error)
         {

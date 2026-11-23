@@ -12,7 +12,8 @@ public sealed record ArchivedSession(
     DateTimeOffset EndedAt,
     string? MeetingTopic,
     IReadOnlyList<TranscriptSegment> Segments,
-    IReadOnlyList<Suggestion> Suggestions)
+    IReadOnlyList<Suggestion> Suggestions,
+    MeetingMemory? Memory = null)
 {
     public Guid Id { get; init; } = Guid.NewGuid();
 }

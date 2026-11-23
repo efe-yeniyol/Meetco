@@ -50,12 +50,14 @@ final class AppEnvironment {
             store: transcriptStore,
             settings: settings
         )
+        let assistant = ProviderRoutingAssistant(chatClients: chatClients, anthropic: anthropic)
         let suggestions = SuggestionEngine(
-            assistant: ProviderRoutingAssistant(chatClients: chatClients, anthropic: anthropic),
+            assistant: assistant,
             screenCapture: ScreenshotService(),
             transcript: transcriptStore,
             settings: settings,
-            keys: keys
+            keys: keys,
+            memory: MeetingMemoryEngine(assistant: assistant, transcript: transcriptStore, settings: settings)
         )
         let permissions = PermissionsManager()
         let archive = SessionArchive()

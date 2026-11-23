@@ -17,6 +17,7 @@ enum SettingsKeys {
     static let userContext = "settings.userContext"
     static let autoSuggest = "settings.autoSuggest"
     static let detectQuestionsInAnyLanguage = "settings.detectQuestionsInAnyLanguage"
+    static let meetingMemoryEnabled = "settings.meetingMemoryEnabled"
     static let transcriptionLanguage = "settings.transcriptionLanguage"
     static let latencyProfile = "settings.latencyProfile"
     static let captureMode = "settings.captureMode"
@@ -57,6 +58,8 @@ final class SettingsStore {
     var autoSuggest: Bool { didSet { defaults.set(autoSuggest, forKey: SettingsKeys.autoSuggest) } }
     /// Lets the assistant model decide whether phrases the local detector missed are questions (any language).
     var detectQuestionsInAnyLanguage: Bool { didSet { defaults.set(detectQuestionsInAnyLanguage, forKey: SettingsKeys.detectQuestionsInAnyLanguage) } }
+    /// Tracks people (names, roles) and what was said, and uses it in every answer.
+    var meetingMemoryEnabled: Bool { didSet { defaults.set(meetingMemoryEnabled, forKey: SettingsKeys.meetingMemoryEnabled) } }
 
     // Audio & transcription
     var transcriptionLanguage: TranscriptionLanguage { didSet { save(transcriptionLanguage, SettingsKeys.transcriptionLanguage) } }
@@ -100,6 +103,7 @@ final class SettingsStore {
         userContext = defaults.string(forKey: SettingsKeys.userContext) ?? ""
         autoSuggest = defaults.object(forKey: SettingsKeys.autoSuggest) as? Bool ?? true
         detectQuestionsInAnyLanguage = defaults.object(forKey: SettingsKeys.detectQuestionsInAnyLanguage) as? Bool ?? true
+        meetingMemoryEnabled = defaults.object(forKey: SettingsKeys.meetingMemoryEnabled) as? Bool ?? true
         transcriptionLanguage = Self.load(defaults, SettingsKeys.transcriptionLanguage, .auto)
         latencyProfile = Self.load(defaults, SettingsKeys.latencyProfile, .fast)
         captureMode = Self.load(defaults, SettingsKeys.captureMode, .systemAndMicrophone)

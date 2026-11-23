@@ -48,7 +48,7 @@ public sealed class AnthropicMeetingAssistant(IAnthropicClient client) : IMeetin
         AnthropicMessageRequest.From(
             request.Model,
             PromptBuilder.Messages(request, inlineSchema: true),
-            request.Kind == SuggestionKind.Recap ? 1200 : 800,
+            request.Kind == SuggestionKind.Memory ? 1500 : request.Kind == SuggestionKind.Recap ? 1200 : 800,
             temperature);
 
     private async Task<AssistantOutput> StreamAsync(AnthropicMessageRequest message, SuggestionKind kind, Action<AssistantPartial> onPartial, CancellationToken cancellationToken)
